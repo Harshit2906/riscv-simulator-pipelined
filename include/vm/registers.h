@@ -39,7 +39,7 @@ class RegisterFile {
     FLOATING_POINT,  ///< Floating-point register.
     VECTOR,          ///< Vector register.
     CSR              ///< Control and Status Register (CSR).
-  };
+  };    
 
   RegisterFile();
 

@@ -1,3 +1,4 @@
+
 /**
  * @file rvss_vm.cpp
  * @brief RVSS VM implementation
@@ -286,7 +287,8 @@ void RVSSVM::HandleSyscall() {
         break;
     }
     case SYSCALL_EXIT: {
-        stop_requested_ = true; // Stop the VM
+        stop_requested_ = true;
+         // Stop the VM
         if (!globals::vm_as_backend) {
             std::cout << "VM_EXIT" << std::endl;
         }
