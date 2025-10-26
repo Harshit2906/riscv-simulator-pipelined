@@ -126,6 +126,7 @@ enum class AluOp {
 
     FMV_D_X, ///< Floating point move to integer double operation.
     FMV_X_D, ///< Floating point move from integer double operation.
+    NOP ///< Do nothing
 };
 
 inline std::ostream& operator<<(std::ostream& os, const AluOp& op) {

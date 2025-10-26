@@ -3,8 +3,8 @@
  * @brief RVSS VM definition
  * @author Vishank Singh, https://github.com/VishankSingh
  */
-#ifndef RVSS_VM_H
-#define RVSS_VM_H
+#ifndef RVSS_STAGES_H
+#define RVSS_STAGES_H
 
 
 #include "vm/vm_base.h"
@@ -96,7 +96,7 @@ struct StepDelta {
 
 
 
-class RVSSVM : public VmBase {
+class Stages : public VmBase {
  public:
   RVSSControlUnit control_unit_;
   std::atomic<bool> stop_requested_ = false;
@@ -143,8 +143,8 @@ class RVSSVM : public VmBase {
   void WriteBackDouble();
   void WriteBackCsr();
 
-  RVSSVM();
-  ~RVSSVM();
+  Stages();
+  ~Stages();
 
   void Run() override;
   void DebugRun() override;

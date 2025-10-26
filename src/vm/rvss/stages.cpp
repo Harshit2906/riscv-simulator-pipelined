@@ -11,7 +11,6 @@
 #include "common/instructions.h"
 #include "config.h"
 #include "pipelined_registers.h"
-
 #include <cctype>
 #include <cstdint>
 #include <iostream>
@@ -36,31 +35,47 @@ RVSSVM::RVSSVM() : VmBase() {
 RVSSVM::~RVSSVM() = default;
 
 void RVSSVM::Fetch() {
-//   WriteGpr()= memory_controller_.ReadWord(program_counter_);
+  current_instruction_ = memory_controller_.ReadWord(program_counter_);
+  if_id.instruction=current_instruction_;
+  if_id.pc=program_counter_;
+  if_id.valid=true;
   UpdateProgramCounter(4);
 }
 
 void RVSSVM::Decode() {
-  control_unit_.SetControlSignals(current_instruction_);
+    if(if_id.valid==true)
+    {
+        control_unit_.Decoding_the_instruction(if_id.instruction);
+        if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
+    id_ex.execute_type=1;
+  } else if (instruction_set::isDInstruction(if_id.instruction)) {
+    id_ex.execute_type=2;
+  } else if (id_ex.opcode==0b1110011) {
+    id_ex.execute_type=3;
+  }
+  
+    }
+    else
+    id_ex.valid=false;
 }
 
 void RVSSVM::Execute() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+ // uint8_t opcode = current_instruction_ & 0b1111111;
+  //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
 
-  if (opcode == get_instr_encoding(Instruction::kecall).opcode && 
-      funct3 == get_instr_encoding(Instruction::kecall).funct3) {
+  if (id_ex.opcode == get_instr_encoding(Instruction::kecall).opcode && 
+      id_ex.funct3 == get_instr_encoding(Instruction::kecall).funct3) {
     HandleSyscall();
     return;
   }
 
-  if (instruction_set::isFInstruction(current_instruction_)) { // RV64 F
+  if (id_ex.execute_type==1) { // RV64 F
     ExecuteFloat();
     return;
-  } else if (instruction_set::isDInstruction(current_instruction_)) {
+  } else if (id_ex.execute_type==2) {
     ExecuteDouble();
     return;
-  } else if (opcode==0b1110011) {
+  } else if (id_ex.execute_type==3) {
     ExecuteCsr();
     return;
   }
@@ -801,15 +816,15 @@ void RVSSVM::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
 
-  while (!stop_requested_ && program_counter_ < program_size_) {
+  while (!stop_requested_ && (program_counter_ < program_size_|| mem_wb.valid==true)) {
     if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
       break;
 
-    Fetch();
-    Decode();
-    Execute();
-    WriteMemory();
     WriteBack();
+    WriteMemory();
+    Execute();
+    Decode();
+    Fetch();
     instructions_retired_++;
     instruction_executed++;
     cycle_s_++;
