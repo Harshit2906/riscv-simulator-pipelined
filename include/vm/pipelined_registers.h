@@ -1,62 +1,51 @@
-/**
- * @file pipelined_registers.h
- * @brief Declaration of the Pilelined_Registers class and related helper functions.
- * @author Nimish Agarwal, https://github.com/Nimish-Agarwal-2006
- */
+#ifndef PIPELINE_REGISTERS_H
+#define PIPELINE_REGISTERS_H
 
-#ifndef PIPELINED_REGISTERS_H
-#define PIPELINED_REGISTERS_H
 #include <cstdint>
-#include <vector>
-#include <array>
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include <stdexcept>
-using namespace std;
-class Pipelined_Registers {
-public:
-    // Constructor
-    Pipelined_Registers();
+#include "alu.h"
 
-    // Reset all registers to default values
-    void Reset();
-
-    // General Purpose Registers (GPR) access
-    uint64_t ReadGpr(size_t reg) const;
-    void WriteGpr(size_t reg, uint64_t value);
-    std::vector<uint64_t> GetGprValues() const;
-
-    // Floating Point Registers (FPR) access
-    uint64_t ReadFpr(size_t reg) const;
-    void WriteFpr(size_t reg, uint64_t value);
-    std::vector<uint64_t> GetFprValues() const;
-
-    // Control and Status Registers (CSR) access
-    uint64_t ReadCsr(size_t reg) const;
-    void WriteCsr(size_t reg, uint64_t value);
-
-    // Modify register by name
-    void ModifyRegister(const std::string &reg_name, uint64_t value);
-
-private:
-    // Storage for pipeline registers
-    std::array<uint64_t, 5> pipgpr_{};   // General Purpose Registers
-    std::array<uint64_t, 5> pipfpr_{};   // Floating Point Registers
-    std::array<uint64_t, 5> pipcsr_{};   // CSR Registers
+struct IF_ID {
+    uint64_t pc;
+    uint32_t instruction;
+    bool valid;
 };
 
-// Valid registers sets
-extern const std::unordered_set<std::string> valid_general_purpose_registers;
-extern const std::unordered_set<std::string> valid_floating_point_registers;
-extern const std::unordered_set<std::string> valid_csr_registers;
+struct ID_EX {
+    uint64_t pc;
+    uint64_t reg1_val;
+    uint64_t reg2_val;
+    int32_t imm;
+    uint8_t rs1, rs2, rd;
+    uint8_t funct3, funct7, opcode,funct2,funct5;
+    bool regWrite, memRead, memWrite, branch;
+    bool aluOp;
+    bool aluSrc;
+    uint8_t execute_type;
+    bool valid;
+};
 
-// Mapping CSR names to addresses
-extern const std::unordered_map<std::string, int> csr_to_address;
+struct EX_MEM {
+    uint64_t alu_result;
+    uint64_t reg2_val;
+    uint8_t rd;
+    bool regWrite, memRead, memWrite;
+    uint8_t funct3;
+    bool valid;
+};
 
-// Helper validation functions
-bool IsValidGeneralPurposeRegister(const std::string &reg);
-bool IsValidFloatingPointRegister(const std::string &reg);
-bool IsValidCsr(const std::string &reg);
+struct MEM_WB {
+    uint64_t mem_data;
+    uint64_t alu_result;
+    uint8_t rd;
+    bool regWrite;
+    bool memToReg;
+    bool valid;
+};
 
-#endif // PIPELINED_REGISTERS_H
+// Global extern declarations
+extern IF_ID if_id;
+extern ID_EX id_ex;
+extern EX_MEM ex_mem;
+extern MEM_WB mem_wb;
+
+#endif // PIPELINE_REGISTERS_H
