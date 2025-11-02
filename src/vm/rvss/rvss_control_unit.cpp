@@ -128,7 +128,8 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
   id_ex.rs1 = (instruction>> 15) & 0b11111;
   id_ex.rs2 = (instruction>> 20) & 0b11111;
   id_ex.rs3= (instruction>> 27) & 0b11111;
- 
+  id_ex.csr=(instruction>> 20) & 0xFFF;
+
   id_ex.regWrite = false, id_ex.memRead = false, id_ex.memWrite = false, id_ex.branch = false,
     id_ex.aluOp = false,
     id_ex.aluSrc = false;

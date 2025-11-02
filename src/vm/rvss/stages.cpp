@@ -67,7 +67,9 @@ void RVSSVM::Decode() {
 void RVSSVM::Execute() {
  // uint8_t opcode = current_instruction_ & 0b1111111;
   //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
-
+  if(id_ex.valid==true)
+  {
+    ex_mem.execute_type=id_ex.execute_type;
   if (id_ex.opcode == get_instr_encoding(Instruction::kecall).opcode && 
       id_ex.funct3 == get_instr_encoding(Instruction::kecall).funct3) {
     HandleSyscall();
@@ -76,12 +78,33 @@ void RVSSVM::Execute() {
 
   if (id_ex.execute_type==1) { // RV64 F
     ExecuteFloat();
+    ex_mem.alu_result = execution_result_;
+    ex_mem.reg2_val =id_ex.reg2_val;
+    ex_mem.rd = id_ex.rd;
+    ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
+    ex_mem.funct3 = id_ex.funct3;
+    ex_mem.funct7 = id_ex.funct7;
+    ex_mem.opcode=id_ex.opcode;
     return;
   } else if (id_ex.execute_type==2) {
     ExecuteDouble();
+    ex_mem.alu_result = execution_result_;
+    ex_mem.reg2_val =id_ex.reg2_val;
+    ex_mem.rd = id_ex.rd;
+    ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
+    ex_mem.funct3 = id_ex.funct3;
+    ex_mem.funct7 = id_ex.funct7;
+    ex_mem.opcode=id_ex.opcode;
     return;
   } else if (id_ex.execute_type==3) {
     ExecuteCsr();
+    ex_mem.alu_result = execution_result_;
+    ex_mem.reg2_val =id_ex.reg2_val;
+    ex_mem.rd = id_ex.rd;
+    ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
+    ex_mem.funct3 = id_ex.funct3;
+    ex_mem.funct7 = id_ex.funct7;
+    ex_mem.opcode=id_ex.opcode;
     return;
   }
 
@@ -158,6 +181,16 @@ void RVSSVM::Execute() {
     execution_result_ = static_cast<int64_t>(program_counter_) - 4 + (id_ex.imm << 12);
 
   }
+  ex_mem.alu_result = execution_result_;
+    ex_mem.reg2_val =id_ex.reg2_val;
+    ex_mem.rd = id_ex.rd;
+    ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
+    ex_mem.funct3 = id_ex.funct3;
+    ex_mem.funct7 = id_ex.funct7;
+    ex_mem.opcode=id_ex.opcode;
+}
+else
+ex_mem.valid=false;
 }
 void RVSSVM::ExecuteFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
@@ -198,28 +231,28 @@ void RVSSVM::ExecuteFloat() {
 }
 
 void RVSSVM::ExecuteDouble() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
-  uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
-  uint8_t rm = funct3;
-  uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
-  uint8_t rs3 = (current_instruction_ >> 27) & 0b11111;
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
+   uint8_t rm = id_ex.funct3;
+  // uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
+  // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
+  // uint8_t rs3 = (current_instruction_ >> 27) & 0b11111;
 
   uint8_t fcsr_status = 0;
 
   int32_t imm = ImmGenerator(current_instruction_);
 
-  uint64_t reg1_value = registers_.ReadFpr(rs1);
-  uint64_t reg2_value = registers_.ReadFpr(rs2);
-  uint64_t reg3_value = registers_.ReadFpr(rs3);
+  uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
+  uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+  uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
 
-  if (funct7==0b1101001 || funct7==0b1111001 || opcode==0b0000111 || opcode==0b0100111) {
-    reg1_value = registers_.ReadGpr(rs1);
+  if (id_ex.funct7==0b1101001 || id_ex.funct7==0b1111001 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
+    reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
 
   if (control_unit_.GetAluSrc()) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
+    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
@@ -227,14 +260,14 @@ void RVSSVM::ExecuteDouble() {
 }
 
 void RVSSVM::ExecuteCsr() {
-  uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
-  uint16_t csr = (current_instruction_ >> 20) & 0xFFF;
-  uint64_t csr_val = registers_.ReadCsr(csr);
+  //uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
+  //uint16_t csr = (current_instruction_ >> 20) & 0xFFF;
+  uint64_t csr_val = registers_.ReadCsr(id_ex.csr);
 
-  csr_target_address_ = csr;
+  csr_target_address_ = id_ex.csr;
   csr_old_value_ = csr_val;
-  csr_write_val_ = registers_.ReadGpr(rs1);
-  csr_uimm_ = rs1;
+  csr_write_val_ = registers_.ReadGpr(id_ex.rs1);
+  csr_uimm_ = id_ex.rs1;
 }
 
 // TODO: implement writeback for syscalls
@@ -412,50 +445,71 @@ void RVSSVM::HandleSyscall() {
 }
 
 void RVSSVM::WriteMemory() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
-  uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
+  // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  if(id_ex.valid==true)
+  {
 
-  if (opcode == 0b1110011 && funct3 == 0b000) {
+    mem_wb.execute_type=ex_mem.execute_type;
+  if (ex_mem.opcode == 0b1110011 && ex_mem.funct3 == 0b000) {
+    mem_wb.opcode=ex_mem.opcode,mem_wb.funct3=ex_mem.funct3,mem_wb.funct7=ex_mem.funct7;
+    mem_wb.mem_data = 0x00000000;
+    mem_wb.alu_result = ex_mem.alu_result;
+    mem_wb.rd = ex_mem.rd,
+    mem_wb.regWrite = ex_mem.regWrite;
+    mem_wb.memToReg = ex_mem.memRead;
     return;
   }
 
-  if (instruction_set::isFInstruction(current_instruction_)) { // RV64 F
+  if (ex_mem.execute_type==1) { // RV64 F
     WriteMemoryFloat();
+    mem_wb.opcode=ex_mem.opcode,mem_wb.funct3=ex_mem.funct3,mem_wb.funct7=ex_mem.funct7;
+    mem_wb.mem_data = memory_result_;
+    mem_wb.alu_result = ex_mem.alu_result;
+    mem_wb.rd = ex_mem.rd,
+    mem_wb.regWrite = ex_mem.regWrite;
+    mem_wb.memToReg = ex_mem.memRead;
     return;
-  } else if (instruction_set::isDInstruction(current_instruction_)) {
+  } else if (ex_mem.execute_type==2) {
     WriteMemoryDouble();
+    mem_wb.opcode=ex_mem.opcode,mem_wb.funct3=ex_mem.funct3,mem_wb.funct7=ex_mem.funct7;
+    mem_wb.mem_data = memory_result_;
+    mem_wb.alu_result = ex_mem.alu_result;
+    mem_wb.rd = ex_mem.rd,
+    mem_wb.regWrite = ex_mem.regWrite;
+    mem_wb.memToReg = ex_mem.memRead;
     return;
   }
 
-  if (control_unit_.GetMemRead()) {
-    switch (funct3) {
+  if (ex_mem.memRead==true) {
+    switch (ex_mem.funct3) {
       case 0b000: {// LB
-        memory_result_ = static_cast<int8_t>(memory_controller_.ReadByte(execution_result_));
+        memory_result_ = static_cast<int8_t>(memory_controller_.ReadByte(ex_mem.alu_result));
         break;
       }
       case 0b001: {// LH
-        memory_result_ = static_cast<int16_t>(memory_controller_.ReadHalfWord(execution_result_));
+        memory_result_ = static_cast<int16_t>(memory_controller_.ReadHalfWord(ex_mem.alu_result));
         break;
       }
       case 0b010: {// LW
-        memory_result_ = static_cast<int32_t>(memory_controller_.ReadWord(execution_result_));
+        memory_result_ = static_cast<int32_t>(memory_controller_.ReadWord(ex_mem.alu_result));
         break;
       }
       case 0b011: {// LD
-        memory_result_ = memory_controller_.ReadDoubleWord(execution_result_);
+        memory_result_ = memory_controller_.ReadDoubleWord(ex_mem.alu_result);
         break;
       }
       case 0b100: {// LBU
-        memory_result_ = static_cast<uint8_t>(memory_controller_.ReadByte(execution_result_));
+        memory_result_ = static_cast<uint8_t>(memory_controller_.ReadByte(ex_mem.alu_result));
         break;
       }
       case 0b101: {// LHU
-        memory_result_ = static_cast<uint16_t>(memory_controller_.ReadHalfWord(execution_result_));
+        memory_result_ = static_cast<uint16_t>(memory_controller_.ReadHalfWord(ex_mem.alu_result));
         break;
       }
       case 0b110: {// LWU
-        memory_result_ = static_cast<uint32_t>(memory_controller_.ReadWord(execution_result_));
+        memory_result_ = static_cast<uint32_t>(memory_controller_.ReadWord(ex_mem.alu_result));
         break;
       }
     }
@@ -468,43 +522,43 @@ void RVSSVM::WriteMemory() {
   // TODO: use direct read to read memory for undo/redo functionality, i.e. ReadByte -> ReadByte_d
 
 
-  if (control_unit_.GetMemWrite()) {
-    switch (funct3) {
+  if (ex_mem.memWrite==true) {
+    switch (ex_mem.funct3) {
       case 0b000: {// SB
-        addr = execution_result_;
+        addr = ex_mem.alu_result;
         old_bytes_vec.push_back(memory_controller_.ReadByte(addr));
-        memory_controller_.WriteByte(execution_result_, registers_.ReadGpr(rs2) & 0xFF);
+        memory_controller_.WriteByte(ex_mem.alu_result, ex_mem.reg2_val & 0xFF);
         new_bytes_vec.push_back(memory_controller_.ReadByte(addr));
         break;
       }
       case 0b001: {// SH
-        addr = execution_result_;
+        addr = ex_mem.alu_result;
         for (size_t i = 0; i < 2; ++i) {
           old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
-        memory_controller_.WriteHalfWord(execution_result_, registers_.ReadGpr(rs2) & 0xFFFF);
+        memory_controller_.WriteHalfWord(ex_mem.alu_result, ex_mem.reg2_val & 0xFFFF);
         for (size_t i = 0; i < 2; ++i) {
           new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
         break;
       }
       case 0b010: {// SW
-        addr = execution_result_;
+        addr = ex_mem.alu_result;
         for (size_t i = 0; i < 4; ++i) {
           old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
-        memory_controller_.WriteWord(execution_result_, registers_.ReadGpr(rs2) & 0xFFFFFFFF);
+        memory_controller_.WriteWord(ex_mem.alu_result, ex_mem.reg2_val & 0xFFFFFFFF);
         for (size_t i = 0; i < 4; ++i) {
           new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
         break;
       }
       case 0b011: {// SD
-        addr = execution_result_;
+        addr = ex_mem.alu_result;
         for (size_t i = 0; i < 8; ++i) {
           old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
-        memory_controller_.WriteDoubleWord(execution_result_, registers_.ReadGpr(rs2) & 0xFFFFFFFFFFFFFFFF);
+        memory_controller_.WriteDoubleWord(ex_mem.alu_result, ex_mem.reg2_val & 0xFFFFFFFFFFFFFFFF);
         for (size_t i = 0; i < 8; ++i) {
           new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
         }
@@ -520,13 +574,22 @@ void RVSSVM::WriteMemory() {
       new_bytes_vec
     });
   }
+  mem_wb.opcode=ex_mem.opcode,mem_wb.funct3=ex_mem.funct3,mem_wb.funct7=ex_mem.funct7;
+    mem_wb.mem_data = memory_result_;
+    mem_wb.alu_result = ex_mem.alu_result;
+    mem_wb.rd = ex_mem.rd,
+    mem_wb.regWrite = ex_mem.regWrite;
+    mem_wb.memToReg = ex_mem.memRead;
+}
+else
+ex_mem.valid=false;
 }
 
 void RVSSVM::WriteMemoryFloat() {
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
+  //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) { // FLW
-    memory_result_ = memory_controller_.ReadWord(execution_result_);
+    memory_result_ = memory_controller_.ReadWord(ex_mem.alu_result);
   }
 
   // std::cout << "+++++ Memory result: " << memory_result_ << std::endl;
@@ -536,12 +599,12 @@ void RVSSVM::WriteMemoryFloat() {
   std::vector<uint8_t> new_bytes_vec;
 
   if (control_unit_.GetMemWrite()) { // FSW
-    addr = execution_result_;
+    addr = ex_mem.alu_result;
     for (size_t i = 0; i < 4; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
-    uint32_t val = registers_.ReadFpr(rs2) & 0xFFFFFFFF;
-    memory_controller_.WriteWord(execution_result_, val);
+    uint32_t val = ex_mem.reg2_val & 0xFFFFFFFF;
+    memory_controller_.WriteWord(ex_mem.alu_result, val);
     // new_bytes_vec.push_back(memory_controller_.ReadByte(addr));
     for (size_t i = 0; i < 4; ++i) {
       new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
@@ -554,10 +617,10 @@ void RVSSVM::WriteMemoryFloat() {
 }
 
 void RVSSVM::WriteMemoryDouble() {
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
+  //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) {// FLD
-    memory_result_ = memory_controller_.ReadDoubleWord(execution_result_);
+    memory_result_ = memory_controller_.ReadDoubleWord(ex_mem.alu_result);
   }
 
   uint64_t addr = 0;
@@ -565,11 +628,11 @@ void RVSSVM::WriteMemoryDouble() {
   std::vector<uint8_t> new_bytes_vec;
 
   if (control_unit_.GetMemWrite()) {// FSD
-    addr = execution_result_;
+    addr = ex_mem.alu_result;
     for (size_t i = 0; i < 8; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
-    memory_controller_.WriteDoubleWord(execution_result_, registers_.ReadFpr(rs2));
+    memory_controller_.WriteDoubleWord(ex_mem.alu_result, ex_mem.reg2_val);
     for (size_t i = 0; i < 8; ++i) {
       new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
@@ -581,13 +644,15 @@ void RVSSVM::WriteMemoryDouble() {
 }
 
 void RVSSVM::WriteBack() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
-  uint8_t rd = (current_instruction_ >> 7) & 0b11111;
-  int32_t imm = ImmGenerator(current_instruction_);
+  if(ex_mem.valid==true)
+  {
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
+  // int32_t imm = ImmGenerator(current_instruction_);
 
-  if (opcode == get_instr_encoding(Instruction::kecall).opcode && 
-      funct3 == get_instr_encoding(Instruction::kecall).funct3) { // ecall
+  if (mem_wb.opcode == get_instr_encoding(Instruction::kecall).opcode && 
+      mem_wb.funct3 == get_instr_encoding(Instruction::kecall).funct3) { // ecall
     return;
   }
 
@@ -597,95 +662,95 @@ void RVSSVM::WriteBack() {
   } else if (instruction_set::isDInstruction(current_instruction_)) {
     WriteBackDouble();
     return;
-  } else if (opcode==0b1110011) { // CSR opcode
+  } else if (mem_wb.opcode==0b1110011) { // CSR opcode
     WriteBackCsr();
     return;
   }
 
-  uint64_t old_reg = registers_.ReadGpr(rd);
-  unsigned int reg_index = rd;
+  uint64_t old_reg = registers_.ReadGpr(mem_wb.rd);
+  unsigned int reg_index = mem_wb.rd;
   unsigned int reg_type = 0; // 0 for GPR, 1 for CSR, 2 for FPR
 
 
-  if (control_unit_.GetRegWrite()) { 
-    switch (opcode) {
+  if (mem_wb.regWrite) { 
+    switch (mem_wb.opcode) {
       case get_instr_encoding(Instruction::kRtype).opcode: /* R-Type */
       case get_instr_encoding(Instruction::kItype).opcode: /* I-Type */
       case get_instr_encoding(Instruction::kauipc).opcode: /* AUIPC */ {
-        registers_.WriteGpr(rd, execution_result_);
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
         break;
       }
       case get_instr_encoding(Instruction::kLoadType).opcode: /* Load */ { 
-        registers_.WriteGpr(rd, memory_result_);
+        registers_.WriteGpr(mem_wb.rd, mem_wb.mem_data);
         break;
       }
       case get_instr_encoding(Instruction::kjalr).opcode: /* JALR */
       case get_instr_encoding(Instruction::kjal).opcode: /* JAL */ {
-        registers_.WriteGpr(rd, next_pc_);
+        registers_.WriteGpr(mem_wb.rd, next_pc_);
         break;
       }
       case get_instr_encoding(Instruction::klui).opcode: /* LUI */ {
-        registers_.WriteGpr(rd, (imm << 12));
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
         break;
       }
       default: break;
     }
   }
 
-  if (opcode==get_instr_encoding(Instruction::kjal).opcode) /* JAL */ {
+  if (mem_wb.opcode==get_instr_encoding(Instruction::kjal).opcode) /* JAL */ {
     // Updated in Execute()
   }
-  if (opcode==get_instr_encoding(Instruction::kjalr).opcode) /* JALR */ {
+  if (mem_wb.opcode==get_instr_encoding(Instruction::kjalr).opcode) /* JALR */ {
     // registers_.WriteGpr(rd, return_address_); // Write back to rs1
     // Updated in Execute()
   }
 
-  uint64_t new_reg = registers_.ReadGpr(rd);
+  uint64_t new_reg = registers_.ReadGpr(mem_wb.rd);
   if (old_reg!=new_reg) {
     current_delta_.register_changes.push_back({reg_index, reg_type, old_reg, new_reg});
   }
-
+  }
 }
 
 void RVSSVM::WriteBackFloat() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
-  uint8_t rd = (current_instruction_ >> 7) & 0b11111;
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
+  // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
 
   uint64_t old_reg = 0;
-  unsigned int reg_index = rd;
+  unsigned int reg_index = mem_wb.rd;
   unsigned int reg_type = 2; // 0 for GPR, 1 for CSR, 2 for FPR
   uint64_t new_reg = 0;
 
-  if (control_unit_.GetRegWrite()) {
-    switch(funct7) {
+  if (mem_wb.regWrite==true) {
+    switch(mem_wb.funct7) {
       // write to GPR
       case get_instr_encoding(Instruction::kfle_s).funct7: // f(eq|lt|le).s
       case get_instr_encoding(Instruction::kfcvt_w_s).funct7: // fcvt.(w|wu|l|lu).s
       case get_instr_encoding(Instruction::kfmv_x_w).funct7: // fmv.x.w , fclass.s
       {
-        old_reg = registers_.ReadGpr(rd);
-        registers_.WriteGpr(rd, execution_result_);
-        new_reg = execution_result_;
+        old_reg = registers_.ReadGpr(mem_wb.rd);
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+        new_reg = mem_wb.alu_result;
         reg_type = 0; // GPR
         break;
       }
 
       // write to FPR
       default: {
-        switch (opcode) {
+        switch (mem_wb.opcode) {
           case get_instr_encoding(Instruction::kflw).opcode: {
-            old_reg = registers_.ReadFpr(rd);
-            registers_.WriteFpr(rd, memory_result_);
-            new_reg = memory_result_;
+            old_reg = registers_.ReadFpr(mem_wb.rd);
+            registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
+            new_reg = mem_wb.mem_data;
             reg_type = 2; // FPR
             break;
           }
 
           default: {
-            old_reg = registers_.ReadFpr(rd);
-            registers_.WriteFpr(rd, execution_result_);
-            new_reg = execution_result_;
+            old_reg = registers_.ReadFpr(mem_wb.rd);
+            registers_.WriteFpr(mem_wb.rd, mem_wb.alu_result);
+            new_reg = mem_wb.alu_result;
             reg_type = 2; // FPR
             break;
           }
@@ -723,35 +788,35 @@ void RVSSVM::WriteBackFloat() {
 }
 
 void RVSSVM::WriteBackDouble() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
-  uint8_t rd = (current_instruction_ >> 7) & 0b11111;
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
+  // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
 
   uint64_t old_reg = 0;
-  unsigned int reg_index = rd;
+  unsigned int reg_index = mem_wb.rd;
   unsigned int reg_type = 2; // 0 for GPR, 1 for CSR, 2 for FPR
   uint64_t new_reg = 0;
 
-  if (control_unit_.GetRegWrite()) {
+  if (mem_wb.regWrite==true) {
     // write to GPR
-    if (funct7==0b1010001
-        || funct7==0b1100001
-        || funct7==0b1110001) { // f(eq|lt|le).d, fcvt.(w|wu|l|lu).d
-      old_reg = registers_.ReadGpr(rd);
-      registers_.WriteGpr(rd, execution_result_);
-      new_reg = execution_result_;
+    if (mem_wb.funct7==0b1010001
+        || mem_wb.funct7==0b1100001
+        || mem_wb.funct7==0b1110001) { // f(eq|lt|le).d, fcvt.(w|wu|l|lu).d
+      old_reg = registers_.ReadGpr(mem_wb.rd);
+      registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
       reg_type = 0; // GPR
     }
       // write to FPR
-    else if (opcode==0b0000111) {
-      old_reg = registers_.ReadFpr(rd);
-      registers_.WriteFpr(rd, memory_result_);
-      new_reg = memory_result_;
+    else if (mem_wb.opcode==0b0000111) {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
+      new_reg = mem_wb.mem_data;
       reg_type = 2; // FPR
     } else {
-      old_reg = registers_.ReadFpr(rd);
-      registers_.WriteFpr(rd, execution_result_);
-      new_reg = execution_result_;
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
       reg_type = 2; // FPR
     }
   }
@@ -814,7 +879,7 @@ void RVSSVM::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
 
-  while (!stop_requested_ && (program_counter_ < program_size_|| mem_wb.valid==true)) {
+  while (!stop_requested_ ) {
     if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
       break;
 

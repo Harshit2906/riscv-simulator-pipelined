@@ -13,7 +13,7 @@ ID_EX id_ex = {
     .reg1_val = std::numeric_limits<uint64_t>::max(),
     .reg2_val = std::numeric_limits<uint64_t>::max(),
     .imm = INT32_MIN,
-    .rs1 = 0xFF, .rs2 = 0xFF,.rs3=0xFF, .rd = 0xFF,
+    .rs1 = 0xFF, .rs2 = 0xFF,.rs3=0xFF, .rd = 0xFF, .csr=0xFF,
     .funct3 = 0xFF, .funct7 = 0xFF, .opcode = 0xFF, .funct2=0xFF,.funct5=0xFF,
     .regWrite = false, .memRead = false, .memWrite = false, .branch = false,
     .aluOp = false,
@@ -27,15 +27,18 @@ EX_MEM ex_mem = {
     .reg2_val = std::numeric_limits<uint64_t>::max(),
     .rd = 0xFF,
     .regWrite = false, .memRead = false, .memWrite = false,
-    .funct3 = 0xFF,
+    .opcode=0xFF,.funct3 = 0xFF,.funct7=0xFF,
+    .execute_type=0,
     .valid = false
 };
 
 MEM_WB mem_wb = {
+    .opcode=0xFF,.funct3=0xFF,.funct7=0xFF,
     .mem_data = std::numeric_limits<uint64_t>::max(),
     .alu_result = std::numeric_limits<uint64_t>::max(),
     .rd = 0xFF,
     .regWrite = false,
     .memToReg = false,
+    .execute_type=0,
     .valid = false
 };

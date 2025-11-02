@@ -16,6 +16,7 @@ struct ID_EX {
     uint64_t reg2_val;
     int32_t imm;
     uint8_t rs1, rs2,rs3, rd;
+    uint16_t csr;
     uint8_t funct3, funct7, opcode,funct2,funct5;
     bool regWrite, memRead, memWrite, branch;
     bool aluOp;
@@ -29,16 +30,19 @@ struct EX_MEM {
     uint64_t reg2_val;
     uint8_t rd;
     bool regWrite, memRead, memWrite;
-    uint8_t funct3;
+    uint8_t opcode,funct3,funct7;
+    uint8_t execute_type;
     bool valid;
 };
 
 struct MEM_WB {
+    uint8_t opcode,funct3,funct7;
     uint64_t mem_data;
     uint64_t alu_result;
     uint8_t rd;
     bool regWrite;
     bool memToReg;
+    uint8_t execute_type;
     bool valid;
 };
 
