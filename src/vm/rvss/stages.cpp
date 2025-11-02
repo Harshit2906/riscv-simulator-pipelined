@@ -46,6 +46,7 @@ void RVSSVM::Decode() {
     if(if_id.valid==true)
     {
         control_unit_.Decoding_the_instruction(if_id.instruction);
+         id_ex.imm = ImmGenerator(if_id.instruction);
         if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
     id_ex.execute_type=1;
   } else if (instruction_set::isDInstruction(if_id.instruction)) {
@@ -53,7 +54,11 @@ void RVSSVM::Decode() {
   } else if (id_ex.opcode==0b1110011) {
     id_ex.execute_type=3;
   }
-  
+  else
+  {
+    id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+    id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
+  }
     }
     else
     id_ex.valid=false;
@@ -80,42 +85,36 @@ void RVSSVM::Execute() {
     return;
   }
 
-  uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
-
-  int32_t imm = ImmGenerator(current_instruction_);
-
-  uint64_t reg1_value = registers_.ReadGpr(rs1);
-  uint64_t reg2_value = registers_.ReadGpr(rs2);
+  
 
   bool overflow = false;
 
   if (control_unit_.GetAluSrc()) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
+    id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal(current_instruction_, control_unit_.GetAluOp());
-  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, reg1_value, reg2_value);
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
 
 
   if (control_unit_.GetBranch()) {
-    if (opcode==get_instr_encoding(Instruction::kjalr).opcode || 
-        opcode==get_instr_encoding(Instruction::kjal).opcode) {
+    if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
+        id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
       next_pc_ = static_cast<int64_t>(program_counter_); // PC was already updated in Fetch()
       UpdateProgramCounter(-4);
       return_address_ = program_counter_ + 4;
-      if (opcode==get_instr_encoding(Instruction::kjalr).opcode) { 
+      if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode) { 
         UpdateProgramCounter(-program_counter_ + (execution_result_));
-      } else if (opcode==get_instr_encoding(Instruction::kjal).opcode) {
-        UpdateProgramCounter(imm);
+      } else if (id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
+        UpdateProgramCounter(id_ex.imm);
       }
-    } else if (opcode==get_instr_encoding(Instruction::kbeq).opcode ||
-               opcode==get_instr_encoding(Instruction::kbne).opcode ||
-               opcode==get_instr_encoding(Instruction::kblt).opcode ||
-               opcode==get_instr_encoding(Instruction::kbge).opcode ||
-               opcode==get_instr_encoding(Instruction::kbltu).opcode ||
-               opcode==get_instr_encoding(Instruction::kbgeu).opcode) {
-      switch (funct3) {
+    } else if (id_ex.opcode==get_instr_encoding(Instruction::kbeq).opcode ||
+               id_ex.opcode==get_instr_encoding(Instruction::kbne).opcode ||
+               id_ex.opcode==get_instr_encoding(Instruction::kblt).opcode ||
+               id_ex.opcode==get_instr_encoding(Instruction::kbge).opcode ||
+               id_ex.opcode==get_instr_encoding(Instruction::kbltu).opcode ||
+               id_ex.opcode==get_instr_encoding(Instruction::kbgeu).opcode) {
+      switch (id_ex.funct3) {
         case 0b000: {// BEQ
           branch_flag_ = (execution_result_==0);
           break;
@@ -149,26 +148,25 @@ void RVSSVM::Execute() {
   }
 
   
-  if (branch_flag_ && opcode==0b1100011) {
+  if (branch_flag_ && id_ex.opcode==0b1100011) {
     UpdateProgramCounter(-4);
-    UpdateProgramCounter(imm);
+    UpdateProgramCounter(id_ex.imm);
   }
 
 
-  if (opcode==get_instr_encoding(Instruction::kauipc).opcode) { // AUIPC
-    execution_result_ = static_cast<int64_t>(program_counter_) - 4 + (imm << 12);
+  if (id_ex.opcode==get_instr_encoding(Instruction::kauipc).opcode) { // AUIPC
+    execution_result_ = static_cast<int64_t>(program_counter_) - 4 + (id_ex.imm << 12);
 
   }
 }
-
 void RVSSVM::ExecuteFloat() {
-  uint8_t opcode = current_instruction_ & 0b1111111;
-  uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
-  uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
-  uint8_t rm = funct3;
-  uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
-  uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
-  uint8_t rs3 = (current_instruction_ >> 27) & 0b11111;
+  // uint8_t opcode = current_instruction_ & 0b1111111;
+  // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
+  uint8_t rm = id_ex.funct3;
+  // uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
+  // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
+  // uint8_t rs3 = (current_instruction_ >> 27) & 0b11111;
 
   uint8_t fcsr_status = 0;
 
@@ -178,19 +176,19 @@ void RVSSVM::ExecuteFloat() {
     rm = registers_.ReadCsr(0x002);
   }
 
-  uint64_t reg1_value = registers_.ReadFpr(rs1);
-  uint64_t reg2_value = registers_.ReadFpr(rs2);
-  uint64_t reg3_value = registers_.ReadFpr(rs3);
+  uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
+  uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+  uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
 
-  if (funct7==0b1101000 || funct7==0b1111000 || opcode==0b0000111 || opcode==0b0100111) {
-    reg1_value = registers_.ReadGpr(rs1);
+  if (id_ex.funct7==0b1101000 || id_ex.funct7==0b1111000 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
+    reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
 
   if (control_unit_.GetAluSrc()) {
     reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal(current_instruction_, control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
   std::tie(execution_result_, fcsr_status) = alu::Alu::fpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 
   // std::cout << "+++++ Float execution result: " << execution_result_ << std::endl;
@@ -224,7 +222,7 @@ void RVSSVM::ExecuteDouble() {
     reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal(current_instruction_, control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 
