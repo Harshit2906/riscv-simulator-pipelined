@@ -13,7 +13,7 @@ class RVSSControlUnit : public ControlUnit {
  public:
   void SetControlSignals(uint32_t instruction) override;
   void Decoding_the_instruction(uint32_t instruction);
-  alu::AluOp GetAluSignal_pipelined(uint32_t instruction, bool ALUOp);
+  alu::AluOp GetAluSignal_pipelined(bool ALUOp);
   alu::AluOp GetAluSignal(uint32_t instruction, bool ALUOp) override;
 
 };

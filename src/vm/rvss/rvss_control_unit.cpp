@@ -7,6 +7,11 @@
 #include "vm/rvss/rvss_control_unit.h"
 #include "vm/alu.h"
 #include "pipelined_registers.h"
+#include "vm_base.h"
+#include "utils.h"
+#include "globals.h"
+#include "common/instructions.h"
+#include "config.h"
 #include <cstdint>
 
 #include "common/instructions.h"
@@ -120,6 +125,10 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
   id_ex.funct7 = (instruction >> 25) & 0b1111111;
   id_ex.funct5 = (instruction >> 20) & 0b11111;
   id_ex.funct2 = (instruction >> 25) & 0b11;
+  id_ex.rs1 = (instruction>> 15) & 0b11111;
+  id_ex.rs2 = (instruction>> 20) & 0b11111;
+  id_ex.rs3= (instruction>> 27) & 0b11111;
+ 
   id_ex.regWrite = false, id_ex.memRead = false, id_ex.memWrite = false, id_ex.branch = false,
     id_ex.aluOp = false,
     id_ex.aluSrc = false;
@@ -215,7 +224,7 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
 
     
 }
-alu::AluOp RVSSControlUnit::GetAluSignal_pipelined(uint32_t instruction, bool ALUOp) {
+alu::AluOp RVSSControlUnit::GetAluSignal_pipelined(bool ALUOp) {
     (void)ALUOp; // Suppress unused variable warning
     // DONT UNCOMMENT THIS WITHOUT SUPPORTING ALUOP IN CONTROL SIGNAL SETTING
     // if (!AluOp) {

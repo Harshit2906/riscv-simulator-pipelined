@@ -13,7 +13,7 @@ ID_EX id_ex = {
     .reg1_val = std::numeric_limits<uint64_t>::max(),
     .reg2_val = std::numeric_limits<uint64_t>::max(),
     .imm = INT32_MIN,
-    .rs1 = 0xFF, .rs2 = 0xFF, .rd = 0xFF,
+    .rs1 = 0xFF, .rs2 = 0xFF,.rs3=0xFF, .rd = 0xFF,
     .funct3 = 0xFF, .funct7 = 0xFF, .opcode = 0xFF, .funct2=0xFF,.funct5=0xFF,
     .regWrite = false, .memRead = false, .memWrite = false, .branch = false,
     .aluOp = false,

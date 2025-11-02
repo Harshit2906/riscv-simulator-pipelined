@@ -15,7 +15,7 @@ struct ID_EX {
     uint64_t reg1_val;
     uint64_t reg2_val;
     int32_t imm;
-    uint8_t rs1, rs2, rd;
+    uint8_t rs1, rs2,rs3, rd;
     uint8_t funct3, funct7, opcode,funct2,funct5;
     bool regWrite, memRead, memWrite, branch;
     bool aluOp;
