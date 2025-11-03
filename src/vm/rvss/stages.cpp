@@ -44,11 +44,15 @@ void Stages::Fetch() {
 }
 
 void Stages::Decode() {
-    if(if_id.valid==true)
-    {
+  if(if_id.valid) std::cout<<"decode is valid \n";
+  else std::cout<<"decode is invalid\n";
+
+  if(if_id.valid==true)
+  {
         control_unit_.Decoding_the_instruction(if_id.instruction);
-         id_ex.imm = ImmGenerator(if_id.instruction);
-        if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
+        //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
+        id_ex.imm = ImmGenerator(if_id.instruction);
+  if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
     id_ex.execute_type=1;
   } else if (instruction_set::isDInstruction(if_id.instruction)) {
     id_ex.execute_type=2;
@@ -61,9 +65,10 @@ void Stages::Decode() {
     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
   }
 
-  std::cout << "Debug : rs1 index:"<<id_ex.rs1 << '\n';
+  std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
+  //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
   id_ex.valid=true;
-  std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
+  //std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
     }
     else
     id_ex.valid=false;
@@ -72,6 +77,10 @@ void Stages::Decode() {
 void Stages::Execute() {
  // uint8_t opcode = current_instruction_ & 0b1111111;
   //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+
+
+  if(id_ex.valid) std::cout<<"execute is valid \n";
+  else std::cout<<"execute is invlaid\n";
   if(id_ex.valid==true)
   {
     ex_mem.execute_type=id_ex.execute_type;
@@ -119,16 +128,16 @@ void Stages::Execute() {
   
 
   bool overflow = false;
-
-  if (control_unit_.GetAluSrc()) {
+// change im ifi 
+  if (id_ex.aluSrc) {
     id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
-
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+// change from nimish as argument controlunit.alup to 
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
 
-
-  if (control_unit_.GetBranch()) {
+// change in if getBranch 
+  if (id_ex.branch) {
     if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
         id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
       next_pc_ = static_cast<int64_t>(program_counter_); // PC was already updated in Fetch()
@@ -657,7 +666,10 @@ void Stages::WriteMemoryDouble() {
 }
 
 void Stages::WriteBack() {
-  if(ex_mem.valid==true)
+
+  if(mem_wb.valid) std::cout<<"write back is valid\n";
+  else std::cout<<"write back is invaldi\n";
+  if(mem_wb.valid==true)
   {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
@@ -891,22 +903,26 @@ void Stages::WriteBackCsr() {
 void Stages::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
-
-  while (!stop_requested_ && (program_counter_ < program_size_||if_id.valid||id_ex.valid||ex_mem.valid||mem_wb.valid)) {
+  int count=1;
+  while (!stop_requested_ && (program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
-      //break;
+    //break
+    std::cout<<"count "<<count<<"\n\n";
     if(mem_wb.valid==true)
     instruction_executed++;
+
     WriteBack();
     WriteMemory();
     Execute();
     Decode();
-    if(program_counter_<program_size_)
+    //if(program_counter_<program_size_)
     Fetch();
-    else
-    if_id.valid=false;
+    //else
+    //if_id.valid=false;
     instructions_retired_++;
     
+    std::cout<<"opcode "<<+id_ex.opcode<<" imm "<<id_ex.imm<<"\n\n";
+
     cycle_s_++;
     std::cout << "Program Counter: " << program_counter_ << std::endl;
   }
