@@ -23,6 +23,8 @@
 #include <queue>
 #include <atomic>
 
+using namespace std;
+
 using instruction_set::Instruction;
 using instruction_set::get_instr_encoding;
 
@@ -46,7 +48,11 @@ void Stages::Decode() {
     if(if_id.valid==true)
     {
         control_unit_.Decoding_the_instruction(if_id.instruction);
-         id_ex.imm = ImmGenerator(if_id.instruction);
+        id_ex.imm = ImmGenerator(if_id.instruction);
+
+        // check
+        //cout<<"id_ex.imm"<< id_ex.imm<<endl;
+
         if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
     id_ex.execute_type=1;
   } else if (instruction_set::isDInstruction(if_id.instruction)) {
@@ -64,12 +70,15 @@ void Stages::Decode() {
     id_ex.valid=false;
 }
 
-void Stages::Execute() {
+void Stages::Execute(){
  // uint8_t opcode = current_instruction_ & 0b1111111;
   //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
+  if(id_ex.valid) cout<<"id ex is valid \n";
+  else cout<<"id ex is invalid \n";
   if(id_ex.valid==true)
   {
     ex_mem.execute_type=id_ex.execute_type;
+    ex_mem.valid=true;
   if (id_ex.opcode == get_instr_encoding(Instruction::kecall).opcode && 
       id_ex.funct3 == get_instr_encoding(Instruction::kecall).funct3) {
     HandleSyscall();
@@ -114,7 +123,10 @@ void Stages::Execute() {
 
   if (control_unit_.GetAluSrc()) {
     id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
+    cout<<"id_ex.reg2_val "<<id_ex.reg2_val<<endl;
   }
+
+  cout<<"id_ex.reg2_val "<<id_ex.reg2_val<<endl;
 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
@@ -644,6 +656,9 @@ void Stages::WriteMemoryDouble() {
 }
 
 void Stages::WriteBack() {
+
+  if(ex_mem.valid) cout<<"ex mem is valid"<<endl;
+  else cout<<"ex _ mem is invalid\n";
   if(ex_mem.valid==true)
   {
   // uint8_t opcode = current_instruction_ & 0b1111111;
@@ -671,13 +686,14 @@ void Stages::WriteBack() {
   unsigned int reg_index = mem_wb.rd;
   unsigned int reg_type = 0; // 0 for GPR, 1 for CSR, 2 for FPR
 
-
+  cout<<"mem_wb.alu_result"<<mem_wb.alu_result<<endl;
   if (mem_wb.regWrite) { 
     switch (mem_wb.opcode) {
       case get_instr_encoding(Instruction::kRtype).opcode: /* R-Type */
       case get_instr_encoding(Instruction::kItype).opcode: /* I-Type */
       case get_instr_encoding(Instruction::kauipc).opcode: /* AUIPC */ {
         registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+        cout<<"mem_wb.rd "<<mem_wb.rd<<endl<<"mem_wb.alu_result"<<mem_wb.alu_result<<endl;
         break;
       }
       case get_instr_encoding(Instruction::kLoadType).opcode: /* Load */ { 
@@ -878,7 +894,7 @@ void Stages::WriteBackCsr() {
 void Stages::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
-
+  int loop_count=1;
   while (!stop_requested_ && (program_counter_ < program_size_||if_id.valid||id_ex.valid||ex_mem.valid||mem_wb.valid)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
       //break;
@@ -893,9 +909,19 @@ void Stages::Run() {
     else
     if_id.valid=false;
     instructions_retired_++;
-    
+
+
+    cout<<"loop_count "<<loop_count<<endl<<endl;
+    //cout<<"id_ex reg1"<<id_ex.reg1_val<<endl;
+    //cout<<"id_ex reg2" <<id_ex.reg2_val<<endl;
+    cout<<"id ex imm"<<id_ex.imm<<endl;
+    cout<<"ex mem alu result"<<ex_mem.alu_result<<endl;
+
+
+
     cycle_s_++;
     std::cout << "Program Counter: " << program_counter_ << std::endl;
+    loop_count++;
   }
   if (program_counter_ >= program_size_) {
     std::cout << "VM_PROGRAM_END" << std::endl;
