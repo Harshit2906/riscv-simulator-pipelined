@@ -37,6 +37,7 @@ Stages::~Stages() = default;
 void Stages::Fetch() {
   current_instruction_ = memory_controller_.ReadWord(program_counter_);
   if_id.instruction=current_instruction_;
+  std::cout<<"Debug : instruction fetched: 0x"<<std::hex<<if_id.instruction<<std::dec<<std::endl;
   if_id.pc=program_counter_;
   if_id.valid=true;
   UpdateProgramCounter(4);
@@ -59,6 +60,10 @@ void Stages::Decode() {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
   }
+
+  std::cout << "Debug : rs1 index:"<<id_ex.rs1 << '\n';
+  id_ex.valid=true;
+  std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
     }
     else
     id_ex.valid=false;
@@ -85,6 +90,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==2) {
     ExecuteDouble();
@@ -95,6 +101,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==3) {
     ExecuteCsr();
@@ -105,6 +112,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.valid=true;
     return;
   }
 
@@ -188,6 +196,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.valid=true;
 }
 else
 ex_mem.valid=false;
@@ -448,7 +457,7 @@ void Stages::WriteMemory() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
-  if(id_ex.valid==true)
+  if(ex_mem.valid==true)
   {
 
     mem_wb.execute_type=ex_mem.execute_type;
@@ -459,6 +468,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.valid=true;
     return;
   }
 
@@ -470,6 +480,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.valid=true;
     return;
   } else if (ex_mem.execute_type==2) {
     WriteMemoryDouble();
@@ -479,6 +490,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.valid=true;
     return;
   }
 
@@ -580,6 +592,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.valid=true;
 }
 else
 ex_mem.valid=false;
