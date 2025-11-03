@@ -6,8 +6,8 @@
 
 #include "vm/rvss/rvss_control_unit.h"
 #include "vm/alu.h"
-#include "pipelined_registers.h"
-#include "vm_base.h"
+#include "vm/pipelined_registers.h"
+#include "vm/vm_base.h"
 #include "utils.h"
 #include "globals.h"
 #include "common/instructions.h"

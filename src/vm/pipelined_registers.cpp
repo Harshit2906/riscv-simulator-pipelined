@@ -1,4 +1,4 @@
-#include "pipelined_registers.h"
+#include "vm/pipelined_registers.h"
 #include <limits>
 
 // Define and initialize all pipeline registers with "invalid" values

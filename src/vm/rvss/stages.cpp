@@ -1,16 +1,16 @@
 /**
- * @file rvss_vm.cpp
- * @brief RVSS VM implementation
+ * @file stages.cpp
+ * @brief RVSS VM pipeline stages implementation (renamed class: Stages)
  * @author Vishank Singh, https://github.com/VishankSingh
  */
 
-#include "vm/rvss/rvss_vm.h"
+#include "vm/rvss/stages.h"
 
 #include "utils.h"
 #include "globals.h"
 #include "common/instructions.h"
 #include "config.h"
-#include "pipelined_registers.h"
+#include "vm/pipelined_registers.h"
 #include <cctype>
 #include <cstdint>
 #include <iostream>
@@ -27,14 +27,14 @@ using instruction_set::Instruction;
 using instruction_set::get_instr_encoding;
 
 
-RVSSVM::RVSSVM() : VmBase() {
+Stages::Stages() : VmBase() {
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
 
-RVSSVM::~RVSSVM() = default;
+Stages::~Stages() = default;
 
-void RVSSVM::Fetch() {
+void Stages::Fetch() {
   current_instruction_ = memory_controller_.ReadWord(program_counter_);
   if_id.instruction=current_instruction_;
   if_id.pc=program_counter_;
@@ -42,7 +42,7 @@ void RVSSVM::Fetch() {
   UpdateProgramCounter(4);
 }
 
-void RVSSVM::Decode() {
+void Stages::Decode() {
     if(if_id.valid==true)
     {
         control_unit_.Decoding_the_instruction(if_id.instruction);
@@ -64,7 +64,7 @@ void RVSSVM::Decode() {
     id_ex.valid=false;
 }
 
-void RVSSVM::Execute() {
+void Stages::Execute() {
  // uint8_t opcode = current_instruction_ & 0b1111111;
   //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   if(id_ex.valid==true)
@@ -192,7 +192,7 @@ void RVSSVM::Execute() {
 else
 ex_mem.valid=false;
 }
-void RVSSVM::ExecuteFloat() {
+void Stages::ExecuteFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
@@ -230,7 +230,7 @@ void RVSSVM::ExecuteFloat() {
   registers_.WriteCsr(0x003, fcsr_status);
 }
 
-void RVSSVM::ExecuteDouble() {
+void Stages::ExecuteDouble() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
@@ -241,7 +241,7 @@ void RVSSVM::ExecuteDouble() {
 
   uint8_t fcsr_status = 0;
 
-  int32_t imm = ImmGenerator(current_instruction_);
+  //int32_t imm = ImmGenerator(current_instruction_);
 
   uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
   uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
@@ -259,7 +259,7 @@ void RVSSVM::ExecuteDouble() {
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 
-void RVSSVM::ExecuteCsr() {
+void Stages::ExecuteCsr() {
   //uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
   //uint16_t csr = (current_instruction_ >> 20) & 0xFFF;
   uint64_t csr_val = registers_.ReadCsr(id_ex.csr);
@@ -271,7 +271,7 @@ void RVSSVM::ExecuteCsr() {
 }
 
 // TODO: implement writeback for syscalls
-void RVSSVM::HandleSyscall() {
+void Stages::HandleSyscall() {
   uint64_t syscall_number = registers_.ReadGpr(17);
   switch (syscall_number) {
     case SYSCALL_PRINT_INT: {
@@ -444,7 +444,7 @@ void RVSSVM::HandleSyscall() {
   }
 }
 
-void RVSSVM::WriteMemory() {
+void Stages::WriteMemory() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
@@ -585,7 +585,7 @@ else
 ex_mem.valid=false;
 }
 
-void RVSSVM::WriteMemoryFloat() {
+void Stages::WriteMemoryFloat() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) { // FLW
@@ -616,7 +616,7 @@ void RVSSVM::WriteMemoryFloat() {
   }
 }
 
-void RVSSVM::WriteMemoryDouble() {
+void Stages::WriteMemoryDouble() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) {// FLD
@@ -643,7 +643,7 @@ void RVSSVM::WriteMemoryDouble() {
   }
 }
 
-void RVSSVM::WriteBack() {
+void Stages::WriteBack() {
   if(ex_mem.valid==true)
   {
   // uint8_t opcode = current_instruction_ & 0b1111111;
@@ -656,10 +656,10 @@ void RVSSVM::WriteBack() {
     return;
   }
 
-  if (instruction_set::isFInstruction(current_instruction_)) { // RV64 F
+  if (mem_wb.execute_type==1) { // RV64 F
     WriteBackFloat();
     return;
-  } else if (instruction_set::isDInstruction(current_instruction_)) {
+  } else if (mem_wb.execute_type==2) {
     WriteBackDouble();
     return;
   } else if (mem_wb.opcode==0b1110011) { // CSR opcode
@@ -712,7 +712,7 @@ void RVSSVM::WriteBack() {
   }
 }
 
-void RVSSVM::WriteBackFloat() {
+void Stages::WriteBackFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
   // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
@@ -787,7 +787,7 @@ void RVSSVM::WriteBackFloat() {
   }
 }
 
-void RVSSVM::WriteBackDouble() {
+void Stages::WriteBackDouble() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
   // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
@@ -828,7 +828,7 @@ void RVSSVM::WriteBackDouble() {
   return;
 }
 
-void RVSSVM::WriteBackCsr() {
+void Stages::WriteBackCsr() {
   uint8_t rd = (current_instruction_ >> 7) & 0b11111;
   uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
 
@@ -875,21 +875,25 @@ void RVSSVM::WriteBackCsr() {
 
 }
 
-void RVSSVM::Run() {
+void Stages::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
 
-  while (!stop_requested_ ) {
-    if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
-      break;
-
+  while (!stop_requested_ && (program_counter_ < program_size_||if_id.valid||id_ex.valid||ex_mem.valid||mem_wb.valid)) {
+    //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
+      //break;
+    if(mem_wb.valid==true)
+    instruction_executed++;
     WriteBack();
     WriteMemory();
     Execute();
     Decode();
+    if(program_counter_<program_size_)
     Fetch();
+    else
+    if_id.valid=false;
     instructions_retired_++;
-    instruction_executed++;
+    
     cycle_s_++;
     std::cout << "Program Counter: " << program_counter_ << std::endl;
   }
@@ -901,7 +905,7 @@ void RVSSVM::Run() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void RVSSVM::DebugRun() {
+void Stages::DebugRun() {
   ClearStop();
   uint64_t instruction_executed = 0;
   while (!stop_requested_ && program_counter_ < program_size_) {
@@ -953,7 +957,7 @@ void RVSSVM::DebugRun() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void RVSSVM::Step() {
+void Stages::Step() {
   current_delta_.old_pc = program_counter_;
   if (program_counter_ < program_size_) {
     Fetch();
@@ -993,7 +997,7 @@ void RVSSVM::Step() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void RVSSVM::Undo() {
+void Stages::Undo() {
   if (undo_stack_.empty()) {
     std::cout << "VM_NO_MORE_UNDO" << std::endl;
     output_status_ = "VM_NO_MORE_UNDO";
@@ -1049,7 +1053,7 @@ void RVSSVM::Undo() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void RVSSVM::Redo() {
+void Stages::Redo() {
   if (redo_stack_.empty()) {
     std::cout << "VM_NO_MORE_REDO" << std::endl;
     return;
@@ -1100,7 +1104,7 @@ void RVSSVM::Redo() {
 
 }
 
-void RVSSVM::Reset() {
+void Stages::Reset() {
   program_counter_ = 0;
   instructions_retired_ = 0;
   cycle_s_ = 0;
@@ -1125,7 +1129,3 @@ void RVSSVM::Reset() {
   redo_stack_ = std::stack<StepDelta>();
 
 }
-
-
-
-
