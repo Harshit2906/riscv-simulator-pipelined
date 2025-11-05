@@ -120,41 +120,19 @@ void RVSSControlUnit::SetControlSignals(uint32_t instruction) {
     
 }
 void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
-    unsigned int temp;
-
-    temp = instruction & 0x7F;
-    id_ex.opcode = static_cast<int8_t>(temp);
-
-    //std::cout<<"decodeddededd "<<+id_ex.opcode<<"\n";
-
-    temp = (instruction >> 7) & 0x1F;
-    id_ex.rd = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 12) & 0x07;
-    id_ex.funct3 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 15) & 0x1F;
-    id_ex.rs1 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 20) & 0x1F;
-    id_ex.rs2 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 25) & 0x7F;
-    id_ex.funct7 = static_cast<int8_t>(temp);
-
-    // Extra RISC-V float/CSR fields
-    temp = (instruction >> 20) & 0x1F;
-    id_ex.funct5 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 25) & 0x03;
-    id_ex.funct2 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 27) & 0x1F;
-    id_ex.rs3 = static_cast<int8_t>(temp);
-
-    temp = (instruction >> 20) & 0xFFF;
-    id_ex.csr = static_cast<int16_t>(temp);
-
+  //std::cout << "Debug : decoding_the_instruction : instruction : 0x"<<std::hex << instruction << std::endl;
+  auto tmp = instruction & 0b1111111;
+  id_ex.opcode = (uint8_t)tmp;
+  //std::cout <<  "Debug : decoding_the_instruction : opcode : " << std::hex << (unsigned int)id_ex.opcode << std::endl;
+  id_ex.funct3 = (instruction >> 12) & 0b111;
+  id_ex.funct7 = (instruction >> 25) & 0b1111111;
+  id_ex.funct5 = (instruction >> 20) & 0b11111;
+  id_ex.funct2 = (instruction >> 25) & 0b11;
+  id_ex.rs1 = (instruction>> 15) & 0b11111;
+  id_ex.rs2 = (instruction>> 20) & 0b11111;
+  id_ex.rs3= (instruction>> 27) & 0b11111;
+  id_ex.rd=(instruction>>7) & 0b11111;
+  id_ex.csr=(instruction>> 20) & 0xFFF;
   id_ex.regWrite = false, id_ex.memRead = false, id_ex.memWrite = false, id_ex.branch = false,
     id_ex.aluOp = false,
     id_ex.aluSrc = false;
@@ -250,7 +228,6 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
 
     
 }
-
 alu::AluOp RVSSControlUnit::GetAluSignal_pipelined(bool ALUOp) {
     (void)ALUOp; // Suppress unused variable warning
     // DONT UNCOMMENT THIS WITHOUT SUPPORTING ALUOP IN CONTROL SIGNAL SETTING

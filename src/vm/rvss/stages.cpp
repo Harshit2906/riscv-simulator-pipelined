@@ -59,6 +59,10 @@ void Stages::Decode() {
   } else if (id_ex.opcode==0b1110011) {
     id_ex.execute_type=3;
   }
+  else if(id_ex.opcode==10 || id_ex.opcode==3 || id_ex.opcode == 103){
+      id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+      id_ex.rs2=32;
+  }
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);

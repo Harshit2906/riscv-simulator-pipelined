@@ -1,10 +1,10 @@
 /**
  * @file stages.cpp
- * @brief RVSS VM pipeline stages implementation (renamed class: Hazards)
+ * @brief RVSS VM pipeline stages implementation (renamed class: Forward)
  * @author Vishank Singh, https://github.com/VishankSingh
  */
 
-#include "vm/rvss/hazards.h"
+#include "vm/rvss/forwarding.h"
 
 #include "utils.h"
 #include "globals.h"
@@ -27,14 +27,14 @@ using instruction_set::Instruction;
 using instruction_set::get_instr_encoding;
 
 
-Hazards::Hazards() : VmBase() {
+Forward::Forward() : VmBase() {
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
 
-Hazards::~Hazards() = default;
+Forward::~Forward() = default;
 
-void Hazards::Fetch() {
+void Forward::Fetch() {
   
   current_instruction_ = memory_controller_.ReadWord(program_counter_);
   if_id.instruction=current_instruction_;
@@ -44,7 +44,7 @@ void Hazards::Fetch() {
   UpdateProgramCounter(4);
 }
 
-void Hazards::Decode() {
+void Forward::Decode() {
   // if(if_id.valid) std::cout<<"decode is valid \n";
   // else std::cout<<"decode is invalid\n";
 
@@ -63,6 +63,7 @@ void Hazards::Decode() {
   else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode==103){
         id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
         id_ex.rs2=32;
+        std::cout<<"opcode check done for this \n";
   }
   else
   {
@@ -79,7 +80,7 @@ void Hazards::Decode() {
     id_ex.valid=false;
 }
 
-void Hazards::Execute() {
+void Forward::Execute() {
  // uint8_t opcode = current_instruction_ & 0b1111111;
   //uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
 
@@ -220,7 +221,7 @@ void Hazards::Execute() {
 else
 ex_mem.valid=false;
 }
-void Hazards::ExecuteFloat() {
+void Forward::ExecuteFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
@@ -258,7 +259,7 @@ void Hazards::ExecuteFloat() {
   registers_.WriteCsr(0x003, fcsr_status);
 }
 
-void Hazards::ExecuteDouble() {
+void Forward::ExecuteDouble() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
@@ -287,7 +288,7 @@ void Hazards::ExecuteDouble() {
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 
-void Hazards::ExecuteCsr() {
+void Forward::ExecuteCsr() {
   //uint8_t rs1 = (current_instruction_ >> 15) & 0b11111;
   //uint16_t csr = (current_instruction_ >> 20) & 0xFFF;
   uint64_t csr_val = registers_.ReadCsr(id_ex.csr);
@@ -299,7 +300,7 @@ void Hazards::ExecuteCsr() {
 }
 
 // TODO: implement writeback for syscalls
-void Hazards::HandleSyscall() {
+void Forward::HandleSyscall() {
   uint64_t syscall_number = registers_.ReadGpr(17);
   switch (syscall_number) {
     case SYSCALL_PRINT_INT: {
@@ -472,7 +473,7 @@ void Hazards::HandleSyscall() {
   }
 }
 
-void Hazards::WriteMemory() {
+void Forward::WriteMemory() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
@@ -617,7 +618,7 @@ else
 ex_mem.valid=false;
 }
 
-void Hazards::WriteMemoryFloat() {
+void Forward::WriteMemoryFloat() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) { // FLW
@@ -648,7 +649,7 @@ void Hazards::WriteMemoryFloat() {
   }
 }
 
-void Hazards::WriteMemoryDouble() {
+void Forward::WriteMemoryDouble() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
   if (control_unit_.GetMemRead()) {// FLD
@@ -675,7 +676,7 @@ void Hazards::WriteMemoryDouble() {
   }
 }
 
-void Hazards::WriteBack() {
+void Forward::WriteBack() {
 
   // if(mem_wb.valid) std::cout<<"write back is valid\n";
   // else std::cout<<"write back is invaldi\n";
@@ -747,7 +748,7 @@ void Hazards::WriteBack() {
   }
 }
 
-void Hazards::WriteBackFloat() {
+void Forward::WriteBackFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
   // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
@@ -822,7 +823,7 @@ void Hazards::WriteBackFloat() {
   }
 }
 
-void Hazards::WriteBackDouble() {
+void Forward::WriteBackDouble() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct7 = (current_instruction_ >> 25) & 0b1111111;
   // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
@@ -863,7 +864,7 @@ void Hazards::WriteBackDouble() {
   return;
 }
 
-void Hazards::WriteBackCsr() {
+void Forward::WriteBackCsr() {
   uint8_t rd = (current_instruction_ >> 7) & 0b11111;
   uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
 
@@ -910,99 +911,112 @@ void Hazards::WriteBackCsr() {
 
 }
 
-void Hazards::Run() {
+void Forward::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
   int count=1;
-  while (!stop_requested_ && count<100 && (program_counter_  < program_size_ + 16)) {
+  int nop_count=0;
+  while (!stop_requested_ && (program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
     //break
-
-    bool stall=false;
-    bool branch_stall=false;
-
     //std::cout<<"count "<<count<<"\n\n";
-    std::cout<<"Current PC "<<program_counter_<<"\n";
     if(mem_wb.valid==true)
     instruction_executed++;
+
+    bool stall=false;
 
     WriteBack();
     WriteMemory();
     Execute();
-    if(id_ex.branch){
-      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode){
-          branch_stall=true;
-      }
-      else if(id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode){
-         branch_stall=true;
-      }
-      else{
-        if(id_ex.branch_flag){
-          branch_stall=true;
-        }
-      }
-    }
-
-    if(id_ex.valid && branch_stall){
-      if_id.valid=false;
-    }
-
-    if(branch_stall) std::cout<<"Branch nop"<<"\n";
-
     Decode();
-    //if(program_counter_<program_size_)
 
-    if(ex_mem.valid){
-      if(ex_mem.regWrite || ex_mem.memRead){
-        if(ex_mem.rd>0 && ex_mem.rd<32 &&
-          (ex_mem.rd==id_ex.rs1 || id_ex.rs2==ex_mem.rd)) {
-            stall=true;
-            std::cout<<"NOP2\n";
-            std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
-          }
-        
-      }
-    }
+    // when prev is add/sub/anything exe forwarding
+
     if(mem_wb.valid){
-      if(mem_wb.regWrite || mem_wb.memToReg ){
-        if(ex_mem.rd>0 && ex_mem.rd<32 && 
-        (mem_wb.rd == id_ex.rs1 || mem_wb.rd == id_ex.rs2)) {
-          stall=true;
-          std::cout<<"NOP1\n";
-          std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+        // prev to prev load no nop 
+        if(mem_wb.memToReg){
+            if(mem_wb.rd>0 && mem_wb.rd<32 ){
+                if(mem_wb.rd==id_ex.rs1){
+                    id_ex.reg1_val=mem_wb.alu_result;
+                }
+                if(id_ex.rs2<32 && id_ex.rs2==mem_wb.rd){
+                    id_ex.reg2_val=mem_wb.alu_result;
+                }
+            }
         }
-      }
+        // prev to prev alu pass
+        if(mem_wb.regWrite){
+            //std::cout<<""
+            if(mem_wb.rd>0 && mem_wb.rd<32 ){
+                if(mem_wb.rd==id_ex.rs1){
+                    id_ex.reg1_val=mem_wb.alu_result;
+                }
+                if(id_ex.rs2<32 && id_ex.rs2==mem_wb.rd){
+                    id_ex.reg2_val=mem_wb.alu_result;
+                }
+            }
+
+        }
+        
+    } 
+    if(ex_mem.valid){
+        // prev instruction is load
+        if(ex_mem.memRead){
+            if(ex_mem.rd>0 && ex_mem.rd<32 ){
+                if(ex_mem.rd==id_ex.rs1){
+                    stall=true;
+                }
+                if(id_ex.rs2<32 && id_ex.rs2==ex_mem.rd){
+                    stall=true;
+                }
+            }
+
+            
+        }
+        // prev is alu pass
+        if(ex_mem.regWrite){
+            std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+            if(ex_mem.rd>0 && ex_mem.rd<32 ){
+                if(ex_mem.rd==id_ex.rs1){
+                    std::cout<<"val of rs1"<<id_ex.rs1<<" forwarded used \n";
+                    id_ex.reg1_val=ex_mem.alu_result;
+                }
+                if(id_ex.rs2<32 && id_ex.rs2==ex_mem.rd){
+                    std::cout<<"val of rs2"<<id_ex.rs2<<" forwarded used \n";
+                    id_ex.reg2_val=ex_mem.alu_result;
+                }
+            } 
+        }
     }
-    //have to add when hazard is in the instruction itself
 
 
+
+    //if(program_counter_<program_size_)
     Fetch();
-
-
     if(stall){
-      UpdateProgramCounter(-8);
-      id_ex.valid=false;
+        UpdateProgramCounter(-8);
+        id_ex.valid=false;
+        nop_count++;
     }
-    if(stall) std::cout<<"HALOOOOOOOOOOOOOOOOOO\n";
-
     //else
     //if_id.valid=false;
     instructions_retired_++;
-    count++;
-    std::cout<<"rd "<<+id_ex.rd<<" imm "<<id_ex.imm<<"\n\n";
+    
+    //std::cout<<"opcode "<<+id_ex.opcode<<" imm "<<id_ex.imm<<"\n\n";
 
     cycle_s_++;
-    //std::cout << "Program Counter: " << program_counter_ << std::endl;
+    std::cout << "Program Counter: " << program_counter_ << std::endl;
+    std::cout<<"\n\n";
   }
   if (program_counter_ >= program_size_) {
     std::cout << "VM_PROGRAM_END" << std::endl;
     output_status_ = "VM_PROGRAM_END";
   }
+  std::cout<<"Nop count "<<nop_count<<"\n";
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
-
-void Hazards::DebugRun() {
+void Forward::DebugRun() {
   ClearStop();
   uint64_t instruction_executed = 0;
   while (!stop_requested_ && program_counter_ < program_size_) {
@@ -1054,7 +1068,7 @@ void Hazards::DebugRun() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void Hazards::Step() {
+void Forward::Step() {
   current_delta_.old_pc = program_counter_;
   if (program_counter_ < program_size_) {
     Fetch();
@@ -1094,7 +1108,7 @@ void Hazards::Step() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void Hazards::Undo() {
+void Forward::Undo() {
   if (undo_stack_.empty()) {
     std::cout << "VM_NO_MORE_UNDO" << std::endl;
     output_status_ = "VM_NO_MORE_UNDO";
@@ -1150,7 +1164,7 @@ void Hazards::Undo() {
   DumpState(globals::vm_state_dump_file_path);
 }
 
-void Hazards::Redo() {
+void Forward::Redo() {
   if (redo_stack_.empty()) {
     std::cout << "VM_NO_MORE_REDO" << std::endl;
     return;
@@ -1201,7 +1215,7 @@ void Hazards::Redo() {
 
 }
 
-void Hazards::Reset() {
+void Forward::Reset() {
   program_counter_ = 0;
   instructions_retired_ = 0;
   cycle_s_ = 0;
