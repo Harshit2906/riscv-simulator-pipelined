@@ -125,7 +125,7 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
     temp = instruction & 0x7F;
     id_ex.opcode = static_cast<int8_t>(temp);
 
-    std::cout<<"decodeddededd "<<+id_ex.opcode<<"\n";
+    //std::cout<<"decodeddededd "<<+id_ex.opcode<<"\n";
 
     temp = (instruction >> 7) & 0x1F;
     id_ex.rd = static_cast<int8_t>(temp);
