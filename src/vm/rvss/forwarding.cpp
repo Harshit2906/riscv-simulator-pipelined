@@ -134,13 +134,17 @@ void Forward::Execute() {
   
 
   bool overflow = false;
-// change im ifi 
+//=======================================
+  //fixed store bug 
+  uint64_t alu_operand_2 = id_ex.reg2_val;
+
+//==========================================
   if (id_ex.aluSrc) {
-    id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
+    alu_operand_2 = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
-  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
+  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
 
 // change in if getBranch 
   if (id_ex.branch){
@@ -937,15 +941,18 @@ void Forward::Run() {
         if(mem_wb.memToReg){
             if(mem_wb.rd>0 && mem_wb.rd<32 ){
                 if(mem_wb.rd==id_ex.rs1){
-                    id_ex.reg1_val=mem_wb.alu_result;
+                    id_ex.reg1_val=mem_wb.mem_data;
                 }
                 if(id_ex.rs2<32 && id_ex.rs2==mem_wb.rd){
-                    id_ex.reg2_val=mem_wb.alu_result;
+                    id_ex.reg2_val=mem_wb.mem_data;
                 }
             }
         }
         // prev to prev alu pass
-        if(mem_wb.regWrite){
+        /* ===========================================
+        regwrite is on for load so earlier it was if statement overwriting the data 
+        ============================================ */
+        else if(mem_wb.regWrite){
             //std::cout<<""
             if(mem_wb.rd>0 && mem_wb.rd<32 ){
                 if(mem_wb.rd==id_ex.rs1){
@@ -974,15 +981,15 @@ void Forward::Run() {
             
         }
         // prev is alu pass
-        if(ex_mem.regWrite){
+        else if(ex_mem.regWrite){
             std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
             if(ex_mem.rd>0 && ex_mem.rd<32 ){
                 if(ex_mem.rd==id_ex.rs1){
-                    std::cout<<"val of rs1"<<id_ex.rs1<<" forwarded used \n";
+                    //std::cout<<"val of rs1"<<id_ex.rs1<<" forwarded used \n";
                     id_ex.reg1_val=ex_mem.alu_result;
                 }
                 if(id_ex.rs2<32 && id_ex.rs2==ex_mem.rd){
-                    std::cout<<"val of rs2"<<id_ex.rs2<<" forwarded used \n";
+                  //  std::cout<<"val of rs2"<<id_ex.rs2<<" forwarded used \n";
                     id_ex.reg2_val=ex_mem.alu_result;
                 }
             } 

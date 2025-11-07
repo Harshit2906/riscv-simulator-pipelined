@@ -133,13 +133,14 @@ void Hazards::Execute() {
   
 
   bool overflow = false;
-// change im ifi 
-  if (id_ex.aluSrc) {
-    id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
-  }
+//=======================================
+  //fixed store bug 
+  uint64_t alu_operand_2 = id_ex.reg2_val;
+
+//==========================================
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
-  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
+  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
 
 // change in if getBranch 
   if (id_ex.branch){
