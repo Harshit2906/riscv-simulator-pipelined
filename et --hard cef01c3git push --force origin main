@@ -1,0 +1,29 @@
+[33m206b64c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull origin main: Fast-forward
+[33mcef01c3[m HEAD@{1}: checkout: moving from debuging-is-pain to main
+[33m6cdeeed[m[33m ([m[1;31morigin/debuging-is-pain[m[33m, [m[1;32mdebuging-is-pain[m[33m)[m HEAD@{2}: commit: deleted pipeline
+[33mcef01c3[m HEAD@{3}: checkout: moving from main to debuging-is-pain
+[33mcef01c3[m HEAD@{4}: pull origin main: Fast-forward
+[33mbd8112e[m HEAD@{5}: pull origin main: Fast-forward
+[33mc7d41d4[m[33m ([m[1;32mharshit-edits[m[33m)[m HEAD@{6}: checkout: moving from harshit-edits to main
+[33mc7d41d4[m[33m ([m[1;32mharshit-edits[m[33m)[m HEAD@{7}: checkout: moving from main to harshit-edits
+[33mc7d41d4[m[33m ([m[1;32mharshit-edits[m[33m)[m HEAD@{8}: pull origin main: Fast-forward
+[33m8383103[m HEAD@{9}: pull origin main: Fast-forward
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{10}: checkout: moving from main to main
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{11}: checkout: moving from main to main
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{12}: checkout: moving from final-pipeline to main
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{13}: checkout: moving from hazard_detection to final-pipeline
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{14}: checkout: moving from hazard_detection to hazard_detection
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{15}: checkout: moving from main to hazard_detection
+[33mef1b1dd[m[33m ([m[1;32mhazard_detection[m[33m, [m[1;32mfinal-pipeline[m[33m)[m HEAD@{16}: pull origin main: Fast-forward
+[33md34c27b[m HEAD@{17}: reset: moving to HEAD
+[33md34c27b[m HEAD@{18}: checkout: moving from main to main
+[33md34c27b[m HEAD@{19}: checkout: moving from main to main
+[33md34c27b[m HEAD@{20}: checkout: moving from main to main
+[33md34c27b[m HEAD@{21}: checkout: moving from main to main
+[33md34c27b[m HEAD@{22}: checkout: moving from main to main
+[33md34c27b[m HEAD@{23}: checkout: moving from main to main
+[33md34c27b[m HEAD@{24}: pull origin main: Fast-forward
+[33m0e2882d[m[33m ([m[1;32mharshit-work[m[33m)[m HEAD@{25}: checkout: moving from harshit-work to main
+[33m0e2882d[m[33m ([m[1;32mharshit-work[m[33m)[m HEAD@{26}: checkout: moving from main to harshit-work
+[33m0e2882d[m[33m ([m[1;32mharshit-work[m[33m)[m HEAD@{27}: commit: Add Pipelined_Register structure and improve formatting in registers.h and rvss_vm.cpp
+[33m4cfae8e[m HEAD@{28}: clone: from https://github.com/Harshit2906/riscv-simulator-pipelined
