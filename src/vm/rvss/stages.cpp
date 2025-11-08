@@ -135,6 +135,7 @@ void Stages::Execute() {
 //=======================================
   //fixed store bug 
   uint64_t alu_operand_2 = id_ex.reg2_val;
+  // reg2 was overwritten so temp variable introduced
 
 //==========================================
   if (id_ex.aluSrc) {
