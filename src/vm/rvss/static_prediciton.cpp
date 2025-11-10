@@ -63,13 +63,15 @@ void Prediction::Decode() {
   else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode==103){
         id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
         id_ex.rs2=32;
-        std::cout<<"opcode check done for this \n";
+        //std::cout<<"opcode check done for this \n";
   }
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
   }
+
+  
 
   //std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
   //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
