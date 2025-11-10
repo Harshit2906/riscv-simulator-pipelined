@@ -136,6 +136,10 @@ void Hazards::Execute() {
 //=======================================
   //fixed store bug 
   uint64_t alu_operand_2 = id_ex.reg2_val;
+  
+  if (id_ex.aluSrc) {
+    alu_operand_2 = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
+  }
 
 //==========================================
 // change from nimish as argument controlunit.alup to 
@@ -915,6 +919,7 @@ void Hazards::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
   int count=1;
+  bool prev_stall=false;
   while (!stop_requested_ && count<100 && (program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
     //break
@@ -930,50 +935,47 @@ void Hazards::Run() {
     WriteBack();
     WriteMemory();
     Execute();
-    if(id_ex.branch){
-      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode){
+
+    if(id_ex.valid && id_ex.branch){
+      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
+          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
+          id_ex.branch_flag){
           branch_stall=true;
       }
-      else if(id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode){
-         branch_stall=true;
-      }
-      else{
-        if(id_ex.branch_flag){
-          branch_stall=true;
-        }
-      }
     }
+    //if(!prev_stall){
+      if(id_ex.valid && branch_stall){
+        if_id.valid=false;
+      }
+    //}
 
-    if(id_ex.valid && branch_stall){
-      if_id.valid=false;
-    }
 
-    if(branch_stall) std::cout<<"Branch nop"<<"\n";
+    //if(branch_stall) std::cout<<"Branch nop"<<"\n";
 
     Decode();
     //if(program_counter_<program_size_)
-
-    if(ex_mem.valid){
-      if(ex_mem.regWrite || ex_mem.memRead){
-        if(ex_mem.rd>0 && ex_mem.rd<32 &&
-          (ex_mem.rd==id_ex.rs1 || id_ex.rs2==ex_mem.rd)) {
-            stall=true;
-            std::cout<<"NOP2\n";
-            std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
-          }
-        
-      }
-    }
-    if(mem_wb.valid){
-      if(mem_wb.regWrite || mem_wb.memToReg ){
-        if(ex_mem.rd>0 && ex_mem.rd<32 && 
-        (mem_wb.rd == id_ex.rs1 || mem_wb.rd == id_ex.rs2)) {
-          stall=true;
-          std::cout<<"NOP1\n";
-          std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+      if(ex_mem.valid){
+        if(ex_mem.regWrite || ex_mem.memRead){
+          if(ex_mem.rd>0 && ex_mem.rd<32 &&
+            (ex_mem.rd==id_ex.rs1 || ex_mem.rd==id_ex.rs2)) {
+              stall=true;
+              std::cout<<"NOP2\n";
+              std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+            }
+          
         }
       }
-    }
+      if(mem_wb.valid){
+        if(mem_wb.regWrite || mem_wb.memToReg ){
+          if(mem_wb.rd>0 && mem_wb.rd<32 && 
+          (mem_wb.rd == id_ex.rs1 || mem_wb.rd == id_ex.rs2)) {
+            stall=true;
+            std::cout<<"NOP1\n";
+            std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+          }
+        }
+      }
+
     //have to add when hazard is in the instruction itself
 
 
@@ -984,7 +986,8 @@ void Hazards::Run() {
       UpdateProgramCounter(-8);
       id_ex.valid=false;
     }
-    if(stall) std::cout<<"HALOOOOOOOOOOOOOOOOOO\n";
+    prev_stall=stall;
+    //if(stall) std::cout<<"HALOOOOOOOOOOOOOOOOOO\n";
 
     //else
     //if_id.valid=false;

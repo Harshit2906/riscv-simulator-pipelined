@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
         }
         try {
             AssembledProgram program = assemble(argv[i]);
-            Stages vm;
+            Hazards vm;
             vm.LoadProgram(program);
             vm.Run();
             std::cout << "Program running: " << program.filename << '\n';
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
 
   AssembledProgram program;
-  Stages vm;
+  Hazards vm;
   // try {
   //   program = assemble("/home/vis/Desk/codes/assembler/examples/ntest1.s");
   // } catch (const std::runtime_error &e) {

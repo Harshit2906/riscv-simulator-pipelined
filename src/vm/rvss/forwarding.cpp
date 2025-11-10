@@ -928,10 +928,22 @@ void Forward::Run() {
     instruction_executed++;
 
     bool stall=false;
-
+    bool branch_stall=false;
+    
     WriteBack();
     WriteMemory();
     Execute();
+    if(id_ex.branch){
+      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
+          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
+          id_ex.branch_flag){
+          branch_stall=true;
+      }
+    }
+
+    if(id_ex.valid && branch_stall){
+      if_id.valid=false;
+    }
     Decode();
 
     // when prev is add/sub/anything exe forwarding
