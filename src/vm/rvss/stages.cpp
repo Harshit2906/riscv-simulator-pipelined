@@ -59,6 +59,10 @@ void Stages::Decode() {
   } else if (id_ex.opcode==0b1110011) {
     id_ex.execute_type=3;
   }
+  else if(id_ex.opcode==10 || id_ex.opcode==3 || id_ex.opcode == 103){
+      id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+      id_ex.rs2=32;
+  }
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
@@ -128,13 +132,18 @@ void Stages::Execute() {
   
 
   bool overflow = false;
-// change im ifi 
+//=======================================
+  //fixed store bug 
+  uint64_t alu_operand_2 = id_ex.reg2_val;
+  // reg2 was overwritten so temp variable introduced
+
+//==========================================
   if (id_ex.aluSrc) {
-    id_ex.reg2_val = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
+    alu_operand_2 = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
-  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, id_ex.reg2_val);
+  std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
 
 // change in if getBranch 
   if (id_ex.branch) {

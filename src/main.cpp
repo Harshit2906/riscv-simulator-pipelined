@@ -4,6 +4,9 @@
 #include "globals.h"
 #include "vm/rvss/rvss_vm.h"
 #include "vm/rvss/stages.h"
+#include "vm/rvss/rvss_control_unit.h"
+#include "vm/rvss/hazards.h"
+#include "vm/rvss/forwarding.h"
 #include "vm_runner.h"
 #include "command_handler.h"
 #include "config.h"
@@ -56,7 +59,7 @@ int main(int argc, char *argv[]) {
         }
         try {
             AssembledProgram program = assemble(argv[i]);
-            Stages vm;
+            Hazards vm;
             vm.LoadProgram(program);
             vm.Run();
             std::cout << "Program running: " << program.filename << '\n';
@@ -89,7 +92,7 @@ int main(int argc, char *argv[]) {
 
 
   AssembledProgram program;
-  Stages vm;
+  Hazards vm;
   // try {
   //   program = assemble("/home/vis/Desk/codes/assembler/examples/ntest1.s");
   // } catch (const std::runtime_error &e) {
