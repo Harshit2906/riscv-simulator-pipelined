@@ -750,6 +750,8 @@ void Forward::WriteBack() {
     current_delta_.register_changes.push_back({reg_index, reg_type, old_reg, new_reg});
   }
   }
+  // changed
+  else mem_wb.valid=false;
 }
 
 void Forward::WriteBackFloat() {
@@ -1009,14 +1011,14 @@ void Forward::Run() {
     }
 
 
-
-    //if(program_counter_<program_size_)
-    Fetch();
     if(stall){
-        UpdateProgramCounter(-8);
+        UpdateProgramCounter(-4);
         id_ex.valid=false;
         nop_count++;
     }
+    //if(program_counter_<program_size_)
+    Fetch();
+
     //else
     //if_id.valid=false;
     instructions_retired_++;

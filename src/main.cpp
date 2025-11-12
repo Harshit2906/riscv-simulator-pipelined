@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
         }
         try {
             AssembledProgram program = assemble(argv[i]);
-            Hazards vm;
+            Forward vm;
             vm.LoadProgram(program);
             vm.Run();
             std::cout << "Program running: " << program.filename << '\n';

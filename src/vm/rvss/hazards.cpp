@@ -64,12 +64,16 @@ void Hazards::Decode() {
         id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
         id_ex.rs2=32;
   }
+  else if(id_ex.opcode==111) { // jal rs1 rs2 not req
+          id_ex.rs1=32; 
+          id_ex.rs2=32; 
+    }
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
   }
-
+  id_ex.pc = if_id.pc;
   //std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
   //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
   id_ex.valid=true;
@@ -145,7 +149,10 @@ void Hazards::Execute() {
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
-
+  //==============================
+  // FOR JALR EXECUTION_RESULT IS
+  //===============================
+  //uint64_t final_val=execution_result_; 
 // change in if getBranch 
   if (id_ex.branch){
     if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
@@ -153,15 +160,15 @@ void Hazards::Execute() {
       next_pc_ = static_cast<int64_t>(program_counter_); // PC was already updated in Fetch()
       //UpdateProgramCounter(-4);
       //return_address_ = program_counter_ + 4;
-      return_address_=program_counter_-4;
+      return_address_=id_ex.pc+4;
       // need to check here
       //============================
       if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode) { 
-        UpdateProgramCounter(-program_counter_-4 + (execution_result_));
+        UpdateProgramCounter(-program_counter_ + (execution_result_));
       } 
       //=============================
       else if (id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
-        UpdateProgramCounter(id_ex.imm-8);
+        UpdateProgramCounter(-program_counter_+id_ex.pc+id_ex.imm);
       }
     } else if (id_ex.opcode==get_instr_encoding(Instruction::kbeq).opcode ||
                id_ex.opcode==get_instr_encoding(Instruction::kbne).opcode ||
@@ -204,8 +211,8 @@ void Hazards::Execute() {
 
   // imm - 8 will give correct branch 1st instruction 
   if (id_ex.branch_flag && id_ex.opcode==0b1100011) {
-    //UpdateProgramCounter(-4);
     UpdateProgramCounter(id_ex.imm-8);
+    //UpdateProgramCounter(-program_counter_+id_ex.pc + id_ex.imm);
   }
 
 
@@ -213,7 +220,14 @@ void Hazards::Execute() {
     execution_result_ = static_cast<int64_t>(program_counter_) - 12 + (id_ex.imm << 12);
 
   }
-    ex_mem.alu_result = execution_result_;
+  if(id_ex.branch){
+    if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
+        id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
+          ex_mem.alu_result = return_address_;
+        }
+        else ex_mem.alu_result=execution_result_;
+  }
+  else  ex_mem.alu_result=execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
     ex_mem.rd = id_ex.rd;
     ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
@@ -618,8 +632,9 @@ void Hazards::WriteMemory() {
     mem_wb.memToReg = ex_mem.memRead;
     mem_wb.valid=true;
 }
+// bsdi bug here 
 else
-ex_mem.valid=false;
+  mem_wb.valid=false;
 }
 
 void Hazards::WriteMemoryFloat() {
@@ -726,7 +741,7 @@ void Hazards::WriteBack() {
       }
       case get_instr_encoding(Instruction::kjalr).opcode: /* JALR */
       case get_instr_encoding(Instruction::kjal).opcode: /* JAL */ {
-        registers_.WriteGpr(mem_wb.rd, next_pc_);
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
         break;
       }
       case get_instr_encoding(Instruction::klui).opcode: /* LUI */ {
@@ -920,7 +935,7 @@ void Hazards::Run() {
   uint64_t instruction_executed = 0;
   int count=1;
   bool prev_stall=false;
-  while (!stop_requested_ && count<100 && (program_counter_  < program_size_ + 16)) {
+  while (!stop_requested_  && (program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
     //break
 
@@ -928,9 +943,11 @@ void Hazards::Run() {
     bool branch_stall=false;
 
     //std::cout<<"count "<<count<<"\n\n";
+    //
     std::cout<<"Current PC "<<program_counter_<<"\n";
     if(mem_wb.valid==true)
     instruction_executed++;
+    if(prev_stall) id_ex.valid=false;
 
     WriteBack();
     WriteMemory();
@@ -941,16 +958,17 @@ void Hazards::Run() {
           id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
           id_ex.branch_flag){
           branch_stall=true;
+          //std::cout<<"id_ex branch rs1 rs2 "<<+id_ex.rs1<<" "<<id_ex.rs2<<"\n"; 
       }
     }
-    //if(!prev_stall){
+
       if(id_ex.valid && branch_stall){
+        //id_ex.valid=false;
         if_id.valid=false;
       }
-    //}
 
 
-    //if(branch_stall) std::cout<<"Branch nop"<<"\n";
+    if(branch_stall) std::cout<<"Branch nop"<<"\n";
 
     Decode();
     //if(program_counter_<program_size_)
@@ -960,7 +978,7 @@ void Hazards::Run() {
             (ex_mem.rd==id_ex.rs1 || ex_mem.rd==id_ex.rs2)) {
               stall=true;
               std::cout<<"NOP2\n";
-              std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+              //std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
             }
           
         }
@@ -971,29 +989,77 @@ void Hazards::Run() {
           (mem_wb.rd == id_ex.rs1 || mem_wb.rd == id_ex.rs2)) {
             stall=true;
             std::cout<<"NOP1\n";
-            std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
+            //std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
           }
         }
       }
 
-    //have to add when hazard is in the instruction itself
 
+    if(stall){
+      UpdateProgramCounter(-4);
+      id_ex.valid=false;
+      
+    }
 
     Fetch();
 
 
-    if(stall){
-      UpdateProgramCounter(-8);
-      id_ex.valid=false;
-    }
-    prev_stall=stall;
+
+
+
     //if(stall) std::cout<<"HALOOOOOOOOOOOOOOOOOO\n";
 
     //else
     //if_id.valid=false;
+    // --- Cycle End ---
+    std::cout << "\n================= CYCLE " << std::dec << cycle_s_ << " END =================\n";
+    std::cout << "Current PC: 0x" << std::hex << program_counter_ << std::dec << "\n";
+
+    // --- IF/ID Register State ---
+    // (Note: rs1, rs2, rd, imm are not yet known in this stage)
+    std::cout << "IF/ID: "
+              << "valid: " << if_id.valid
+              << " | PC: 0x" << std::hex << if_id.pc
+              << " | Instr: 0x" << if_id.instruction << std::dec
+              << "\n";
+
+    // --- ID/EX Register State ---
+    std::cout << "ID/EX: "
+              << "valid: " << id_ex.valid
+              << " | rs1: " << (unsigned int)id_ex.rs1  // Cast to int to print number, not char
+              << " | rs2: " << (unsigned int)id_ex.rs2
+              << " | rd: " << (unsigned int)id_ex.rd
+              << " | imm: 0x" << std::hex << id_ex.imm << std::dec
+              << "\n";
+
+    // --- EX/MEM Register State ---
+    // (Note: rs1, rs2, imm are used and gone; rd is passed through)
+    std::cout << "EX/MEM: "
+              << "valid: " << ex_mem.valid
+              << " | rd: " << (unsigned int)ex_mem.rd
+              << " | ALU_Result: 0x" << std::hex << ex_mem.alu_result << std::dec
+              << " | regWrite: " << ex_mem.regWrite
+              << " | memRead: " << ex_mem.memRead
+              << "\n";
+
+    // --- MEM/WB Register State ---
+    // (Note: rd is passed through for the final write)
+    uint64_t write_data = mem_wb.memToReg ? mem_wb.mem_data : mem_wb.alu_result;
+    std::cout << "MEM/WB: "
+              << "valid: " << mem_wb.valid
+              << " | rd: " << (unsigned int)mem_wb.rd
+              << " | WriteData: 0x" << std::hex << write_data << std::dec
+              << " | regWrite: " << mem_wb.regWrite
+              << "\n";
+    std::cout << "====================================================\n\n";
+
+
+    // This line should already be in your code:
+    cycle_s_++;
+
     instructions_retired_++;
     count++;
-    std::cout<<"rd "<<+id_ex.rd<<" imm "<<id_ex.imm<<"\n\n";
+    //std::cout<<"rd "<<+id_ex.rd<<" imm "<<id_ex.imm<<"\n\n";
 
     cycle_s_++;
     //std::cout << "Program Counter: " << program_counter_ << std::endl;
