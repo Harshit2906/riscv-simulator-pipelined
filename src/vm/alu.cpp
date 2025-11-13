@@ -379,6 +379,7 @@ static std::string decode_fclass(uint16_t res) {
     case AluOp::FCVT_S_W: {
       auto ia = static_cast<int32_t>(ina);
       result = static_cast<float>(ia);
+      
       break;
 
     }

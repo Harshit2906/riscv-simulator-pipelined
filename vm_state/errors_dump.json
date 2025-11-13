@@ -1,4 +1,117 @@
 {
-    "errorCode": 0,
-    "errors": []
+    "errorCode": 1,
+    "errors": [
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 3,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 3,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 6,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 6,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 1,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 3,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 3,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 6,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 6,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 9,
+            "message": "Invalid token: Expected .data, .text, .bss or <opcode> or <label>"
+        },
+        {
+            "line": 10,
+            "message": "Unexpected token: Harshit"
+        },
+        {
+            "line": 11,
+            "message": "Unexpected token: Wed"
+        },
+        {
+            "line": 12,
+            "message": "Unexpected token: tc2"
+        },
+        {
+            "line": 13,
+            "message": "Unexpected token: Shiva"
+        }
+    ]
 }

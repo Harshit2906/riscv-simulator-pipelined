@@ -26,13 +26,74 @@
 using instruction_set::Instruction;
 using instruction_set::get_instr_encoding;
 
-
 Hazards::Hazards() : VmBase() {
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
 
 Hazards::~Hazards() = default;
+
+
+void Hazards::DataHazard(){
+    bool stall=false;
+      if(ex_mem.valid){
+        if(ex_mem.regWrite || ex_mem.memRead){
+          if(ex_mem.rd==id_ex.rs1){
+            if(ex_mem.rd_type == id_ex.rs1_type){
+              if(!(ex_mem.rd_type==0 && ex_mem.rd==0))
+                stall=true;
+            }
+          }
+          if(ex_mem.rd==id_ex.rs2){
+            if(ex_mem.rd_type == id_ex.rs2_type){
+              if(!(ex_mem.rd_type==0 && ex_mem.rd==0))
+                stall=true;
+            }
+          }
+        }
+      }
+      if(mem_wb.valid){
+        if(mem_wb.regWrite || mem_wb.memToReg ){
+          if(mem_wb.rd==id_ex.rs1){
+            if(mem_wb.rd_type == id_ex.rs1_type){
+              if(!(mem_wb.rd_type==0 && mem_wb.rd==0))
+                stall=true;
+            }
+          }
+          if(mem_wb.rd==id_ex.rs2){
+            if(mem_wb.rd_type == id_ex.rs2_type){
+              if(!(mem_wb.rd_type==0 && mem_wb.rd==0))
+                stall=true;
+            }
+          }
+        }
+      }
+
+
+    if(stall){
+      UpdateProgramCounter(-4);
+      id_ex.valid=false;
+      
+    }
+}
+void Hazards::ControlHazard(){
+  bool branch_stall=false;
+
+    if(id_ex.valid && id_ex.branch){
+      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
+          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
+          id_ex.branch_flag){
+          branch_stall=true;
+          //std::cout<<"id_ex branch rs1 rs2 "<<+id_ex.rs1<<" "<<id_ex.rs2<<"\n"; 
+      }
+    }
+
+      if(id_ex.valid && branch_stall){
+        //id_ex.valid=false;
+        if_id.valid=false;
+      }
+}
+
 
 void Hazards::Fetch() {
   
@@ -53,6 +114,7 @@ void Hazards::Decode() {
         control_unit_.Decoding_the_instruction(if_id.instruction);
         //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
         id_ex.imm = ImmGenerator(if_id.instruction);
+        id_ex.execute_type=0;
   if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
     id_ex.execute_type=1;
   } else if (instruction_set::isDInstruction(if_id.instruction)) {
@@ -145,11 +207,27 @@ void Hazards::Execute() {
     alu_operand_2 = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
+  // if(id_ex.opcode==0b0110111){
+  //   id_ex.reg1_val=0;
+  //   alu_operand_2=id_ex.funct7;
+  //   alu_operand_2<<=5;
+  //   alu_operand_2+=id_ex.rs2;
+  //   alu_operand_2<<=5;
+  //   alu_operand_2+=id_ex.rs1;
+  //   alu_operand_2<<=3;
+  //   alu_operand_2+=id_ex.funct3;
+  //   //alu_operand_2<<=12;
+  // }
 //==========================================
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
-  //==============================
+  
+  if(id_ex.opcode==55){
+    std::cout<<" lui imm"<<id_ex.imm<<"\n";
+    execution_result_=id_ex.imm;
+  }
+    //==============================
   // FOR JALR EXECUTION_RESULT IS
   //===============================
   //uint64_t final_val=execution_result_; 
@@ -745,7 +823,9 @@ void Hazards::WriteBack() {
         break;
       }
       case get_instr_encoding(Instruction::klui).opcode: /* LUI */ {
-        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+        std::cout<<"lui in writeback "<<mem_wb.alu_result<<"\n";
+        std::cout<<" lui in wirte rd "<<+mem_wb.rd<<"\n";
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result<<12);
         break;
       }
       default: break;
@@ -953,53 +1033,11 @@ void Hazards::Run() {
     WriteMemory();
     Execute();
 
-    if(id_ex.valid && id_ex.branch){
-      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
-          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
-          id_ex.branch_flag){
-          branch_stall=true;
-          //std::cout<<"id_ex branch rs1 rs2 "<<+id_ex.rs1<<" "<<id_ex.rs2<<"\n"; 
-      }
-    }
-
-      if(id_ex.valid && branch_stall){
-        //id_ex.valid=false;
-        if_id.valid=false;
-      }
-
-
-    if(branch_stall) std::cout<<"Branch nop"<<"\n";
+    ControlHazard();
 
     Decode();
-    //if(program_counter_<program_size_)
-      if(ex_mem.valid){
-        if(ex_mem.regWrite || ex_mem.memRead){
-          if(ex_mem.rd>0 && ex_mem.rd<32 &&
-            (ex_mem.rd==id_ex.rs1 || ex_mem.rd==id_ex.rs2)) {
-              stall=true;
-              std::cout<<"NOP2\n";
-              //std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
-            }
-          
-        }
-      }
-      if(mem_wb.valid){
-        if(mem_wb.regWrite || mem_wb.memToReg ){
-          if(mem_wb.rd>0 && mem_wb.rd<32 && 
-          (mem_wb.rd == id_ex.rs1 || mem_wb.rd == id_ex.rs2)) {
-            stall=true;
-            std::cout<<"NOP1\n";
-            //std::cout<<"mem_wb rd "<<+mem_wb.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
-          }
-        }
-      }
 
-
-    if(stall){
-      UpdateProgramCounter(-4);
-      id_ex.valid=false;
-      
-    }
+    DataHazard();
 
     Fetch();
 

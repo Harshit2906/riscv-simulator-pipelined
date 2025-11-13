@@ -52,6 +52,7 @@ void Stages::Decode() {
         control_unit_.Decoding_the_instruction(if_id.instruction);
         //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
         id_ex.imm = ImmGenerator(if_id.instruction);
+        id_ex.execute_type=0;
   if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
     id_ex.execute_type=1;
   } else if (instruction_set::isDInstruction(if_id.instruction)) {
@@ -59,10 +60,14 @@ void Stages::Decode() {
   } else if (id_ex.opcode==0b1110011) {
     id_ex.execute_type=3;
   }
-  else if(id_ex.opcode==10 || id_ex.opcode==3 || id_ex.opcode == 103){
+  else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode == 103){
       id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
       id_ex.rs2=32;
   }
+  else if(id_ex.opcode==111) { // jal rs1 rs2 not req
+          id_ex.rs1=32; 
+          id_ex.rs2=32; 
+    }
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
@@ -244,11 +249,12 @@ void Stages::ExecuteFloat() {
     reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
 
-  if (control_unit_.GetAluSrc()) {
+  if (id_ex.aluSrc) {
     reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
+  std::cout<<aluOperation<<std::endl;
   std::tie(execution_result_, fcsr_status) = alu::Alu::fpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 
   // std::cout << "+++++ Float execution result: " << execution_result_ << std::endl;
@@ -278,11 +284,11 @@ void Stages::ExecuteDouble() {
     reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
 
-  if (control_unit_.GetAluSrc()) {
+  if (id_ex.aluSrc) {
     reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 

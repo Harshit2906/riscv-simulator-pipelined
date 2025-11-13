@@ -18,7 +18,7 @@ ID_EX id_ex = {
     .regWrite = false, .memRead = false, .memWrite = false, .branch = false,.branch_flag=false,.branch_prediction=false,
     .aluOp = false,
     .aluSrc = false,
-    .execute_type= 0,//0 for normal 1 for float 2 for double 3 for csr
+    .execute_type= 0,.rs1_type=0,.rs2_type=0,.rs3_type=0,.rd_type=0,//0 for normal 1 for float 2 for double 3 for csr
     .valid = false
 };
 
@@ -28,7 +28,7 @@ EX_MEM ex_mem = {
     .rd = 0xFF,
     .regWrite = false, .memRead = false, .memWrite = false,
     .opcode=0xFF,.funct3 = 0xFF,.funct7=0xFF,
-    .execute_type=0,
+    .execute_type=0,.rd_type=0,
     .valid = false
 };
 
@@ -39,6 +39,6 @@ MEM_WB mem_wb = {
     .rd = 0xFF,
     .regWrite = false,
     .memToReg = false,
-    .execute_type=0,
+    .execute_type=0,.rd_type=0,
     .valid = false
 };

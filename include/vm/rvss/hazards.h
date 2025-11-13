@@ -10,7 +10,7 @@
 #include "vm/vm_base.h"
 #include "rvss_control_unit.h"
 #include "rvss_vm.h"
-
+#include "vm/pipelined_registers.h"
 #include <stack>
 #include <vector>
 #include <iostream>
@@ -61,6 +61,8 @@ class Hazards : public VmBase {
   uint8_t csr_uimm_{};
 
   // --- Pipeline Stage Functions ---
+  void DataHazard();
+  void ControlHazard();
   void Fetch();
   void Decode();
   void Execute();

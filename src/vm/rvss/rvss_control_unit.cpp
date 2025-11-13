@@ -121,21 +121,21 @@ void RVSSControlUnit::SetControlSignals(uint32_t instruction) {
 }
 void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
   //std::cout << "Debug : decoding_the_instruction : instruction : 0x"<<std::hex << instruction << std::endl;
-  auto tmp = instruction & 0b1111111;
-  id_ex.opcode = (uint8_t)tmp;
+    auto tmp = instruction & 0b1111111;
+    id_ex.opcode = (uint8_t)tmp;
   //std::cout <<  "Debug : decoding_the_instruction : opcode : " << std::hex << (unsigned int)id_ex.opcode << std::endl;
-  id_ex.funct3 = (instruction >> 12) & 0b111;
-  id_ex.funct7 = (instruction >> 25) & 0b1111111;
-  id_ex.funct5 = (instruction >> 20) & 0b11111;
-  id_ex.funct2 = (instruction >> 25) & 0b11;
-  id_ex.rs1 = (instruction>> 15) & 0b11111;
-  id_ex.rs2 = (instruction>> 20) & 0b11111;
-  id_ex.rs3= (instruction>> 27) & 0b11111;
-  id_ex.rd=(instruction>>7) & 0b11111;
-  id_ex.csr=(instruction>> 20) & 0xFFF;
-  id_ex.regWrite = false, id_ex.memRead = false, id_ex.memWrite = false, id_ex.branch = false,
-    id_ex.aluOp = false,
-    id_ex.aluSrc = false;
+    id_ex.funct3 = (instruction >> 12) & 0b111;
+    id_ex.funct7 = (instruction >> 25) & 0b1111111;
+    id_ex.funct5 = (instruction >> 20) & 0b11111;
+    id_ex.funct2 = (instruction >> 25) & 0b11;
+    id_ex.rs1 = (instruction>> 15) & 0b11111;
+    id_ex.rs2 = (instruction>> 20) & 0b11111;
+    id_ex.rs3= (instruction>> 27) & 0b11111;
+    id_ex.rd=(instruction>>7) & 0b11111;
+    id_ex.csr=(instruction>> 20) & 0xFFF;
+    id_ex.regWrite = false, id_ex.memRead = false, id_ex.memWrite = false, id_ex.branch = false,
+    id_ex.aluOp = false,id_ex.aluSrc = false;
+    id_ex.rs1_type=0,id_ex.rs2_type=0,id_ex.rs3_type=0,id_ex.rd_type=0;
 
   switch (id_ex.opcode) {
     case 0b0110011: /* R-type (kAdd, kSub, kAnd, kOr, kXor, kSll, kSrl, etc.) */ {
@@ -205,19 +205,40 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
      // id_ex.mem_to_reg_ = true;
       id_ex.regWrite = true;
       id_ex.memRead = true;
+      id_ex.rd_type=1;
       break;
     }
     case 0b0100111: {// F-Type Store instructions (FSW, FSD)
       id_ex.aluSrc = true;
       id_ex.aluOp = true;
       id_ex.memWrite = true;
+      id_ex.rs2_type=1;
       break;
     }
     case 0b1010011: {// F-Type R-type instructions (FADD, FSUB, FMUL, FDIV, etc.)
       id_ex.regWrite = true;
       id_ex.aluOp = true;
+      id_ex.rd_type=1;
+      id_ex.rs1_type=1;
+      id_ex.rs2_type=1;
+
+        if (id_ex.funct7 == 0b1100000 || id_ex.funct7 == 0b1101000 ||
+        id_ex.funct7 == 0b1110001 || id_ex.funct7 == 0b1111001) {
+        
+        // Conversion direction:
+        if (id_ex.funct7 == 0b1100000 || id_ex.funct7 == 0b1110001) {
+            // float → int
+            id_ex.rd_type = 0;    // destination is integer register
+            id_ex.rs1_type = 1;   // source is FP register
+        } else {
+            // int → float
+            id_ex.rd_type = 1;    // destination is FP register
+            id_ex.rs1_type = 0;   // source is integer register
+        }
+    }
       break;
     }
+    
 
 
 
