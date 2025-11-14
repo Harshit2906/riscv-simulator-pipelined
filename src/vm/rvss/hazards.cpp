@@ -83,6 +83,7 @@ void Hazards::ControlHazard(){
       if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
           id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
           id_ex.branch_flag){
+          std::cout<<" branch stall become true\n";
           branch_stall=true;
           //std::cout<<"id_ex branch rs1 rs2 "<<+id_ex.rs1<<" "<<id_ex.rs2<<"\n"; 
       }
@@ -105,13 +106,92 @@ void Hazards::Fetch() {
   UpdateProgramCounter(4);
 }
 
+// void Hazards::Decode() {
+//   // if(if_id.valid) std::cout<<"decode is valid \n";
+//   // else std::cout<<"decode is invalid\n";
+
+//   if(if_id.valid==true)
+//   {
+//         control_unit_.Decoding_the_instruction(if_id.instruction);
+//         //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
+//         id_ex.imm = ImmGenerator(if_id.instruction);
+//         id_ex.execute_type=0;
+//   if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
+//     id_ex.execute_type=1;
+//   } else if (instruction_set::isDInstruction(if_id.instruction)) {
+//     id_ex.execute_type=2;
+//   } else if (id_ex.opcode==0b1110011) {
+//     id_ex.execute_type=3;
+//   }
+
+
+
+//   if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode==103){
+//         id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+//         id_ex.rs2=32;
+//   }
+//   else if(id_ex.opcode==111) { // jal rs1 rs2 not req
+//           id_ex.rs1=32; 
+//           id_ex.rs2=32; 
+//     }
+//   else if(id_ex.execute_type==1 ||id_ex.execute_type==2){
+//       bool fpu_alu=(id_ex.opcode == 0b1010011);
+//       bool gpr_rs1= (id_ex.funct7 == 0b1101000 || id_ex.funct7 == 0b1111000 || // Float
+//                      id_ex.funct7 == 0b1101001 || id_ex.funct7 == 0b1111001); // Double
+//       if (fpu_alu && !gpr_rs1) {
+//           id_ex.reg1_val = registers_.ReadFpr(id_ex.rs1); // FPU ALU op (FADD.S)
+//       } 
+//       else {
+//         // FPU Load/Store (Base GPR) or FCVT.S.W (Data GPR)
+//         id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+//       }
+//   }
+//   else
+//   {
+//     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+//   }
+
+
+//   bool uses_rs2 = (id_ex.opcode == 0b0110011 || // R-type (int)
+//                    id_ex.opcode == 0b0100011 || // S-type (int)
+//                    id_ex.opcode == 0b1100011 || // B-type (int)
+//                    id_ex.opcode == 0b1010011 || // R-type (FPU)
+//                    id_ex.opcode == 0b0100111);  // S-type (FPU)
+
+//   if (uses_rs2) {
+//       if (id_ex.execute_type == 1 || id_ex.execute_type == 2) { // F/D instruction
+//           // FPU R-type (FADD.S) or S-type (FSW)
+//           id_ex.reg2_val = registers_.ReadFpr(id_ex.rs2); 
+//       } else {
+//           id_ex.reg2_val = registers_.ReadGpr(id_ex.rs2); // Integer R, S, B
+//       }
+//   } else {
+//       id_ex.rs2 = 32; // Mark as unused
+//   }
+//   id_ex.pc = if_id.pc;
+//   std::cout << "Rd type just after debug"<< (unsigned int)id_ex.rd_type << '\n';
+//   //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
+//   id_ex.valid=true;
+//   //std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
+//     }
+//     else
+//     id_ex.valid=false;
+// }
+
 void Hazards::Decode() {
   // if(if_id.valid) std::cout<<"decode is valid \n";
   // else std::cout<<"decode is invalid\n";
 
   if(if_id.valid==true)
-  {
+  {     id_ex.pc=if_id.pc;
         control_unit_.Decoding_the_instruction(if_id.instruction);
+        if (id_ex.opcode == 0b0100011 || // S-type (int store)
+        id_ex.opcode == 0b0100111 || // S-type (FPU store)
+        id_ex.opcode == 0b1100011)   // B-type (branch)
+    {
+        id_ex.rd = 0;      // Use 32 for "no register"
+        id_ex.rd_type = 4;  // Set a default type
+    }
         //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
         id_ex.imm = ImmGenerator(if_id.instruction);
         id_ex.execute_type=0;
@@ -122,20 +202,21 @@ void Hazards::Decode() {
   } else if (id_ex.opcode==0b1110011) {
     id_ex.execute_type=3;
   }
-  else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode==103){
-        id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
-        id_ex.rs2=32;
+  else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode == 103){
+      id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+      id_ex.rs2=32;
   }
   else if(id_ex.opcode==111) { // jal rs1 rs2 not req
           id_ex.rs1=32; 
           id_ex.rs2=32; 
     }
+    /// rs2 change rs2 not in instr
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
   }
-  id_ex.pc = if_id.pc;
+
   //std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
   //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
   id_ex.valid=true;
@@ -165,33 +246,39 @@ void Hazards::Execute() {
     ExecuteFloat();
     ex_mem.alu_result = execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
+    mem_wb.mem_data = memory_result_;
     ex_mem.rd = id_ex.rd;
     ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==2) {
     ExecuteDouble();
     ex_mem.alu_result = execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
+    mem_wb.mem_data = memory_result_;
     ex_mem.rd = id_ex.rd;
     ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==3) {
     ExecuteCsr();
     ex_mem.alu_result = execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
+    mem_wb.mem_data = memory_result_;
     ex_mem.rd = id_ex.rd;
     ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   }
@@ -224,7 +311,7 @@ void Hazards::Execute() {
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
   
   if(id_ex.opcode==55){
-    std::cout<<" lui imm"<<id_ex.imm<<"\n";
+    //std::cout<<" lui imm"<<id_ex.imm<<"\n";
     execution_result_=id_ex.imm;
   }
     //==============================
@@ -247,6 +334,8 @@ void Hazards::Execute() {
       //=============================
       else if (id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
         UpdateProgramCounter(-program_counter_+id_ex.pc+id_ex.imm);
+        std::cout<<"id ex pc "<<(unsigned int)id_ex.pc <<" imm "<<(unsigned int)id_ex.imm<<"\n";
+        std::cout<<"pc after jal "<<program_counter_<<"\n";
       }
     } else if (id_ex.opcode==get_instr_encoding(Instruction::kbeq).opcode ||
                id_ex.opcode==get_instr_encoding(Instruction::kbne).opcode ||
@@ -289,8 +378,8 @@ void Hazards::Execute() {
 
   // imm - 8 will give correct branch 1st instruction 
   if (id_ex.branch_flag && id_ex.opcode==0b1100011) {
-    UpdateProgramCounter(id_ex.imm-8);
-    //UpdateProgramCounter(-program_counter_+id_ex.pc + id_ex.imm);
+    //UpdateProgramCounter(id_ex.imm-8);
+    UpdateProgramCounter(-program_counter_+id_ex.pc + id_ex.imm);
   }
 
 
@@ -312,6 +401,7 @@ void Hazards::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
 }
 else
@@ -328,7 +418,7 @@ void Hazards::ExecuteFloat() {
 
   uint8_t fcsr_status = 0;
 
-  int32_t imm = ImmGenerator(current_instruction_);
+  //int32_t imm = ImmGenerator(current_instruction_);
 
   if (rm==0b111) {
     rm = registers_.ReadCsr(0x002);
@@ -336,19 +426,25 @@ void Hazards::ExecuteFloat() {
 
   uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
   uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+ 
   uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
-
+  
   if (id_ex.funct7==0b1101000 || id_ex.funct7==0b1111000 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
     reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
-
-  if (control_unit_.GetAluSrc()) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
+  std::cout<<"reg2 val in exe float "<<reg2_value<<'\n';
+  if (id_ex.aluSrc) {
+    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
+  id_ex.reg2_val=reg2_value;
+  id_ex.reg1_val=reg1_value;
+  
+  std::cout<<"reg1 val in exe float "<<reg1_value<<'\n';
+  std::cout<<"reg2 val in exe float "<<reg2_value<<'\n';
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, fcsr_status) = alu::Alu::fpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
-
+  std::cout<<"exe result in float"<<execution_result_<<'\n';
   // std::cout << "+++++ Float execution result: " << execution_result_ << std::endl;
 
 
@@ -370,17 +466,22 @@ void Hazards::ExecuteDouble() {
 
   uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
   uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+  
+  std::cout<<"reg1 val in exe float "<<id_ex.reg1_val<<'\n';
+ std::cout<<"reg2 val in exe float "<<id_ex.reg2_val<<'\n'; 
   uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
 
   if (id_ex.funct7==0b1101001 || id_ex.funct7==0b1111001 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
     reg1_value = registers_.ReadGpr(id_ex.rs1);
   }
 
-  if (control_unit_.GetAluSrc()) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
-  }
+  // if (id_ex.aluSrc) {
+  //   reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
+  // }
+  id_ex.reg2_val=reg2_value;
+  id_ex.reg1_val=reg1_value;
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 
@@ -584,6 +685,7 @@ void Hazards::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -596,6 +698,7 @@ void Hazards::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   } else if (ex_mem.execute_type==2) {
@@ -606,6 +709,7 @@ void Hazards::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -708,6 +812,7 @@ void Hazards::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
 }
 // bsdi bug here 
@@ -718,8 +823,10 @@ else
 void Hazards::WriteMemoryFloat() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
-  if (control_unit_.GetMemRead()) { // FLW
+ if (ex_mem.memRead) { // FLW
+    std::cout<<"memory to read from "<<ex_mem.alu_result;
     memory_result_ = memory_controller_.ReadWord(ex_mem.alu_result);
+    std::cout<<"memory result "<<memory_result_<<"\n";
   }
 
   // std::cout << "+++++ Memory result: " << memory_result_ << std::endl;
@@ -728,12 +835,14 @@ void Hazards::WriteMemoryFloat() {
   std::vector<uint8_t> old_bytes_vec;
   std::vector<uint8_t> new_bytes_vec;
 
-  if (control_unit_.GetMemWrite()) { // FSW
+  if (ex_mem.memWrite) { // FSW
     addr = ex_mem.alu_result;
     for (size_t i = 0; i < 4; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
+    std::cout<<"befoe masala "<<id_ex.reg2_val<<'\n';
     uint32_t val = ex_mem.reg2_val & 0xFFFFFFFF;
+    std::cout<<"write back val"<<val<<"\n"; 
     memory_controller_.WriteWord(ex_mem.alu_result, val);
     // new_bytes_vec.push_back(memory_controller_.ReadByte(addr));
     for (size_t i = 0; i < 4; ++i) {
@@ -749,7 +858,7 @@ void Hazards::WriteMemoryFloat() {
 void Hazards::WriteMemoryDouble() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
-  if (control_unit_.GetMemRead()) {// FLD
+  if (ex_mem.memRead) {// FLD
     memory_result_ = memory_controller_.ReadDoubleWord(ex_mem.alu_result);
   }
 
@@ -757,11 +866,12 @@ void Hazards::WriteMemoryDouble() {
   std::vector<uint8_t> old_bytes_vec;
   std::vector<uint8_t> new_bytes_vec;
 
-  if (control_unit_.GetMemWrite()) {// FSD
+  if (ex_mem.memWrite) {// FSD
     addr = ex_mem.alu_result;
     for (size_t i = 0; i < 8; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
+    std::cout<<"reg 2 val in writeback "<<(unsigned int)ex_mem.reg2_val;
     memory_controller_.WriteDoubleWord(ex_mem.alu_result, ex_mem.reg2_val);
     for (size_t i = 0; i < 8; ++i) {
       new_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
@@ -823,8 +933,8 @@ void Hazards::WriteBack() {
         break;
       }
       case get_instr_encoding(Instruction::klui).opcode: /* LUI */ {
-        std::cout<<"lui in writeback "<<mem_wb.alu_result<<"\n";
-        std::cout<<" lui in wirte rd "<<+mem_wb.rd<<"\n";
+        //std::cout<<"lui in writeback "<<mem_wb.alu_result<<"\n";
+        //std::cout<<" lui in wirte rd "<<+mem_wb.rd<<"\n";
         registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result<<12);
         break;
       }
@@ -893,28 +1003,27 @@ void Hazards::WriteBackFloat() {
       }
     }
 
-    // // write to GPR
-    // if (funct7==0b1010000
-    //     || funct7==0b1100000
-    //     || funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
-    //   old_reg = registers_.ReadGpr(rd);
-    //   registers_.WriteGpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 0; // GPR
+    if (mem_wb.funct7==0b1010000
+        || mem_wb.funct7==0b1100000
+        || mem_wb.funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
+      old_reg = registers_.ReadGpr(mem_wb.rd);
+      registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 0; // GPR
 
-    // }
-    // // write to FPR
-    // else if (opcode==get_instr_encoding(Instruction::kflw).opcode) {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, memory_result_);
-    //   new_reg = memory_result_;
-    //   reg_type = 2; // FPR
-    // } else {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 2; // FPR
-    // }
+    }
+    // write to FPR
+    else if (mem_wb.opcode==get_instr_encoding(Instruction::kflw).opcode) {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
+      new_reg = mem_wb.mem_data;
+      reg_type = 2; // FPR
+    } else {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 2; // FPR
+    }
   }
 
   if (old_reg!=new_reg) {
@@ -1015,7 +1124,7 @@ void Hazards::Run() {
   uint64_t instruction_executed = 0;
   int count=1;
   bool prev_stall=false;
-  while (!stop_requested_  && (program_counter_  < program_size_ + 16)) {
+  while (!stop_requested_  && count<500 && (program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
     //break
 
@@ -1065,8 +1174,14 @@ void Hazards::Run() {
     std::cout << "ID/EX: "
               << "valid: " << id_ex.valid
               << " | rs1: " << (unsigned int)id_ex.rs1  // Cast to int to print number, not char
+              << " | rs1_type: "<< (unsigned int)id_ex.rs1_type
               << " | rs2: " << (unsigned int)id_ex.rs2
+              << " | rs2_type: "<< (unsigned int)id_ex.rs2_type
               << " | rd: " << (unsigned int)id_ex.rd
+              << " | rd_type: "<< (unsigned int)id_ex.rd_type
+              << " | opcode: "<<(unsigned int)id_ex.opcode
+              << " | funct7: "<<(unsigned int)id_ex.funct7
+              << " | branch_flag "<<(unsigned int)id_ex.branch_flag
               << " | imm: 0x" << std::hex << id_ex.imm << std::dec
               << "\n";
 
@@ -1075,6 +1190,7 @@ void Hazards::Run() {
     std::cout << "EX/MEM: "
               << "valid: " << ex_mem.valid
               << " | rd: " << (unsigned int)ex_mem.rd
+              << " | rd_type: "<< (unsigned int)ex_mem.rd_type
               << " | ALU_Result: 0x" << std::hex << ex_mem.alu_result << std::dec
               << " | regWrite: " << ex_mem.regWrite
               << " | memRead: " << ex_mem.memRead
@@ -1086,6 +1202,7 @@ void Hazards::Run() {
     std::cout << "MEM/WB: "
               << "valid: " << mem_wb.valid
               << " | rd: " << (unsigned int)mem_wb.rd
+              << " | rd_type: "<< (unsigned int)mem_wb.rd_type
               << " | WriteData: 0x" << std::hex << write_data << std::dec
               << " | regWrite: " << mem_wb.regWrite
               << "\n";
@@ -1099,7 +1216,6 @@ void Hazards::Run() {
     count++;
     //std::cout<<"rd "<<+id_ex.rd<<" imm "<<id_ex.imm<<"\n\n";
 
-    cycle_s_++;
     //std::cout << "Program Counter: " << program_counter_ << std::endl;
   }
   if (program_counter_ >= program_size_) {

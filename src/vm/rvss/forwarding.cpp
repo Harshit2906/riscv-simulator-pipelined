@@ -26,13 +26,130 @@
 using instruction_set::Instruction;
 using instruction_set::get_instr_encoding;
 
-
 Forward::Forward() : VmBase() {
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
 
 Forward::~Forward() = default;
+
+void Forward::Forward_data(){
+
+bool stall=false;
+
+  if(mem_wb.valid){
+        // prev to prev load no nop 
+        if(mem_wb.memToReg){
+
+                if(mem_wb.rd==id_ex.rs1){
+                  if(mem_wb.rd_type==id_ex.rs1_type){
+                    if(!(mem_wb.rd_type==0 && mem_wb.rd==0)){
+                      id_ex.reg1_val=mem_wb.mem_data;
+                    }
+                  }
+                }
+                if(mem_wb.rd==id_ex.rs2){
+                  if(mem_wb.rd_type==id_ex.rs2_type){
+                    if(!(mem_wb.rd_type==0 && mem_wb.rd==0)){
+                      id_ex.reg2_val=mem_wb.mem_data;
+                    }
+                  }
+                }
+    
+        }
+        // prev to prev alu pass
+        /* ===========================================
+        regwrite is on for load so earlier it was if statement overwriting the data 
+        ============================================ */
+        else if(mem_wb.regWrite){
+            //std::cout<<""
+            if(mem_wb.rd==id_ex.rs1){
+              if(mem_wb.rd_type==id_ex.rs1_type){
+                if(!(mem_wb.rd_type==0 && mem_wb.rd==0)){
+                  id_ex.reg1_val=mem_wb.alu_result;
+                }
+              }
+            }
+            if(mem_wb.rd==id_ex.rs2){
+              if(mem_wb.rd_type==id_ex.rs2_type){
+                if(!(mem_wb.rd_type==0 && mem_wb.rd==0)){
+                  id_ex.reg2_val=mem_wb.alu_result;
+                }
+              }
+            }
+
+        }
+        
+    } 
+    if(ex_mem.valid){
+        // prev instruction is load
+        if(ex_mem.memRead){
+
+            if(ex_mem.rd==id_ex.rs1){
+              if(ex_mem.rd_type==id_ex.rs1_type){
+                if(!(ex_mem.rd_type==0 && ex_mem.rd==0)){
+                    stall=true;
+                }
+              }
+            }
+            if(ex_mem.rd==id_ex.rs2){
+              if(ex_mem.rd_type==id_ex.rs2_type){
+                if(!(ex_mem.rd_type==0 && ex_mem.rd==0)){
+                  stall=true;
+                }
+              }
+            }
+            
+        }
+        // prev is alu pass
+        else if(ex_mem.regWrite){
+
+
+            if(ex_mem.rd==id_ex.rs1){
+              if(ex_mem.rd_type==id_ex.rs1_type){
+                if(!(ex_mem.rd_type==0 && ex_mem.rd==0)){
+                  std::cout<<"alu result rs1 is ex "<<ex_mem.alu_result;
+                  id_ex.reg1_val=ex_mem.alu_result;
+                }
+              }
+            }
+            if(ex_mem.rd==id_ex.rs2){
+              if(ex_mem.rd_type==id_ex.rs2_type){
+                if(!(ex_mem.rd_type==0 && ex_mem.rd==0)){
+                  id_ex.reg2_val=ex_mem.alu_result;
+                }
+              }
+            }
+
+        }
+    }
+
+
+    if(stall){
+        UpdateProgramCounter(-4);
+        id_ex.valid=false;
+    }
+
+}
+void Forward::Control_Hazard(){
+    bool branch_stall=false;
+
+    if(id_ex.valid && id_ex.branch){
+      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
+          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
+          id_ex.branch_flag){
+          std::cout<<" branch stall become true\n";
+          branch_stall=true;
+          //std::cout<<"id_ex branch rs1 rs2 "<<+id_ex.rs1<<" "<<id_ex.rs2<<"\n"; 
+      }
+    }
+
+      if(id_ex.valid && branch_stall){
+        //id_ex.valid=false;
+        if_id.valid=false;
+      }
+}
+
 
 void Forward::Fetch() {
   
@@ -44,41 +161,167 @@ void Forward::Fetch() {
   UpdateProgramCounter(4);
 }
 
+
+/**
+ * @brief Decodes instructions, reads from register files, and handles register typing.
+ */
+/**
+ * @brief Decodes instructions, reads from register files, and handles register typing.
+ */
+/**
+ * @brief Decodes instructions, reads from register files, and handles register typing.
+ */
+/**
+ * @brief Decodes instructions, reads from register files, and handles register typing.
+ */
 void Forward::Decode() {
-  // if(if_id.valid) std::cout<<"decode is valid \n";
-  // else std::cout<<"decode is invalid\n";
-
-  if(if_id.valid==true)
-  {
-        control_unit_.Decoding_the_instruction(if_id.instruction);
-        //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
-        id_ex.imm = ImmGenerator(if_id.instruction);
-  if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
-    id_ex.execute_type=1;
-  } else if (instruction_set::isDInstruction(if_id.instruction)) {
-    id_ex.execute_type=2;
-  } else if (id_ex.opcode==0b1110011) {
-    id_ex.execute_type=3;
-  }
-  else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode==103){
-        id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
-        id_ex.rs2=32;
-        std::cout<<"opcode check done for this \n";
-  }
-  else
-  {
-    id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
-    id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
-  }
-
-  //std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
-  //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
-  id_ex.valid=true;
-  //std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
+    // If the previous stage is invalid (e.g., stall), pass the bubble
+    if (!if_id.valid) {
+        id_ex.valid = false;
+        return;
     }
-    else
-    id_ex.valid=false;
+
+    // --- 1. Decode and set basic info ---
+    control_unit_.Decoding_the_instruction(if_id.instruction);
+    std::cout<<"rs2 type just after decoding "<<(unsigned int)id_ex.rs2_type<<"\n";
+    // Pass-through values to the next pipeline register
+    id_ex.imm = ImmGenerator(if_id.instruction);
+    id_ex.pc = if_id.pc;
+    id_ex.valid = true;
+
+    if (id_ex.opcode == 0b0100011 || // S-type (int store)
+        id_ex.opcode == 0b0100111 || // S-type (FPU store)
+        id_ex.opcode == 0b1100011)   // B-type (branch)
+    {
+        id_ex.rd = 0;      // Use 32 for "no register"
+        id_ex.rd_type = 4;  // Set a default type
+    }
+
+    // --- 2. Set Execution Type ---
+    if (instruction_set::isFInstruction(if_id.instruction)) {
+        id_ex.execute_type = 1; // 'F' Type
+    } else if (instruction_set::isDInstruction(if_id.instruction)) {
+        id_ex.execute_type = 2; // 'D' Type
+    } else if (id_ex.opcode == 0b1110011) {
+        id_ex.execute_type = 3; // 'CSR' Type
+    } else {
+        id_ex.execute_type = 0; // 'Integer' Type
+    }
+
+    // --- 3. Read rs1 (from GPR or FPR) ---
+    // Handles all instruction types
+    
+    // Instructions that DON'T use rs1
+    if (id_ex.opcode == 111 /* JAL */ || 
+        id_ex.opcode == 0b0110111 /* LUI */ || 
+        id_ex.opcode == 0b0010111 /* AUIPC */) 
+    {
+        id_ex.rs1 = 32; // Mark as unused
+        id_ex.rs1_type = 0;
+    } 
+    // F/D instructions (must check for GPR vs FPR)
+    else if (id_ex.execute_type == 1 || id_ex.execute_type == 2) 
+    {
+        bool is_fpu_alu = (id_ex.opcode == 0b1010011);
+        // Check for ops that use GPR as rs1 (e.g., FCVT.S.W, FMV.W.X)
+        bool fpu_reads_gpr = (id_ex.funct7 == 0b1101000 || id_ex.funct7 == 0b1111000 || // Float
+                              id_ex.funct7 == 0b1101001 || id_ex.funct7 == 0b1111001); // Double
+
+        if (is_fpu_alu && !fpu_reads_gpr) {
+            // FPU ALU ops: FADD, FSUB, FCVT.W.S, etc.
+            id_ex.reg1_val = registers_.ReadFpr(id_ex.rs1);
+            //id_ex.rs1_type = 1; // FPR
+        } else {
+            // FPU Loads/Stores (base address) or FCVT.S.W (integer data)
+            id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+            id_ex.rs1_type = 0; // GPR
+        }
+    } 
+    // All other integer instructions (R, I, S, B, JALR)
+    else 
+    {
+        id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+        id_ex.rs1_type = 0; // GPR
+    }
+
+
+    // --- 4. Read rs2 (from GPR or FPR) ---
+    
+    // Check if it's an FPU convert/move op (like fcvt, fmv)
+    // These use funct7[6:5] == 0b11 and do NOT use rs2 as a register.
+    bool is_op_fp = (id_ex.opcode == 0b1010011);
+    bool is_fpu_conv_or_move = is_op_fp && ((id_ex.funct7 >> 5) == 0b11);
+
+    // An OP-FP instruction only uses rs2 if it's *NOT* a convert/move op
+    bool op_fp_uses_rs2 = is_op_fp && !is_fpu_conv_or_move;
+    
+    // Check for opcodes that use rs2 (R, S, B types)
+    bool uses_rs2 = (id_ex.opcode == 0b0110011 || // R-type (int)
+                     id_ex.opcode == 0b0100011 || // S-type (int store)
+                     id_ex.opcode == 0b1100011 || // B-type (branch)
+                     op_fp_uses_rs2 ||            // R-type (FPU) <-- FIXED
+                     id_ex.opcode == 0b0100111);  // S-type (FPU store)
+
+    if (uses_rs2) {
+        if (id_ex.execute_type == 1 || id_ex.execute_type == 2) { 
+            // FPU R-type (FADD.S) or S-type (FSW)
+            id_ex.reg2_val = registers_.ReadFpr(id_ex.rs2); 
+            //id_ex.rs2_type = 1; // FPR
+        } else {
+            // Integer R-type, S-type, or B-type
+            id_ex.reg2_val = registers_.ReadGpr(id_ex.rs2); 
+            //id_ex.rs2_type = 0; // GPR
+        }
+    } else {
+        // Doesn't use rs2 (I-type, U-type, J-type, FPU Loads, FPU Cvt/Move)
+        id_ex.rs2 = 32; // Mark as unused
+        //id_ex.rs2_type = 0;
+    }
 }
+// void Forward::Decode() {
+//   // if(if_id.valid) std::cout<<"decode is valid \n";
+//   // else std::cout<<"decode is invalid\n";
+
+//   if(if_id.valid==true)
+//   {
+//         control_unit_.Decoding_the_instruction(if_id.instruction);
+//         //std::cout<<"Debug : if_id.instruction : 0x" << std::hex << if_id.instruction << std::endl;
+//         id_ex.imm = ImmGenerator(if_id.instruction);
+//         id_ex.execute_type=0;
+//   if (instruction_set::isFInstruction(if_id.instruction)) { // RV64 F
+//     id_ex.execute_type=1;
+//     id_ex.reg1_val = registers_.ReadFpr(id_ex.rs1);
+//     id_ex.reg2_val= registers_.ReadFpr(id_ex.rs2);
+//   } else if (instruction_set::isDInstruction(if_id.instruction)) {
+//     id_ex.execute_type=2;
+//   } else if (id_ex.opcode==0b1110011) {
+//     id_ex.execute_type=3;
+//   }
+//   else if(id_ex.opcode==19 || id_ex.opcode==3 || id_ex.opcode == 103){
+//       id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+//       id_ex.rs2=32;
+//   }
+//   else if(id_ex.opcode==111) { // jal rs1 rs2 not req
+//           id_ex.rs1=32; 
+//           id_ex.rs2=32; 
+//     }
+//     /// rs2 change rs2 not in instr
+//   else
+//   {
+//     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
+//     // std::cout<<"reg1_1 val after decoding"<< (unsigned int ) id_ex.reg1_val<<"\n";
+//     id_ex.reg2_val= registers_.ReadGpr(id_ex.rs2);
+//   }
+
+//   std::cout << "Debug : rs1 index:"<< std::hex <<(unsigned int)id_ex.rs1 << '\n';
+//   std::cout << "Debug : rs1 val:"<<std::hex<<(unsigned int)id_ex.reg1_val << '\n';
+//   //std::cout << "Debug : rs2 index:"<<std::hex << (unsigned int)id_ex.rs2 << '\n';
+//   id_ex.valid=true;
+//   //std::cout << "Debug : id_exvalid :" << id_ex.valid << std::endl;
+//     }
+//     else
+//     id_ex.valid=false;
+// }
 
 void Forward::Execute() {
  // uint8_t opcode = current_instruction_ & 0b1111111;
@@ -96,8 +339,11 @@ void Forward::Execute() {
     return;
   }
 
+  
   if (id_ex.execute_type==1) { // RV64 F
+    //std::cout<<"reg2 val "<<id_ex.reg2_val<<'\n';
     ExecuteFloat();
+    //std::cout<<"reg2 val "<<id_ex.reg2_val<<'\n';
     ex_mem.alu_result = execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
     ex_mem.rd = id_ex.rd;
@@ -105,6 +351,7 @@ void Forward::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==2) {
@@ -116,6 +363,7 @@ void Forward::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==3) {
@@ -127,6 +375,7 @@ void Forward::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   }
@@ -137,15 +386,35 @@ void Forward::Execute() {
 //=======================================
   //fixed store bug 
   uint64_t alu_operand_2 = id_ex.reg2_val;
-
-//==========================================
+  
   if (id_ex.aluSrc) {
     alu_operand_2 = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
+
+  // if(id_ex.opcode==0b0110111){
+  //   id_ex.reg1_val=0;
+  //   alu_operand_2=id_ex.funct7;
+  //   alu_operand_2<<=5;
+  //   alu_operand_2+=id_ex.rs2;
+  //   alu_operand_2<<=5;
+  //   alu_operand_2+=id_ex.rs1;
+  //   alu_operand_2<<=3;
+  //   alu_operand_2+=id_ex.funct3;
+  //   //alu_operand_2<<=12;
+  // }
+//==========================================
 // change from nimish as argument controlunit.alup to 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, overflow) = alu_.execute(aluOperation, id_ex.reg1_val, alu_operand_2);
-
+  
+  if(id_ex.opcode==55){
+    //std::cout<<" lui imm"<<id_ex.imm<<"\n";
+    execution_result_=id_ex.imm<<12;
+  }
+    //==============================
+  // FOR JALR EXECUTION_RESULT IS
+  //===============================
+  //uint64_t final_val=execution_result_; 
 // change in if getBranch 
   if (id_ex.branch){
     if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
@@ -153,15 +422,15 @@ void Forward::Execute() {
       next_pc_ = static_cast<int64_t>(program_counter_); // PC was already updated in Fetch()
       //UpdateProgramCounter(-4);
       //return_address_ = program_counter_ + 4;
-      return_address_=program_counter_-4;
+      return_address_=id_ex.pc+4;
       // need to check here
       //============================
       if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode) { 
-        UpdateProgramCounter(-program_counter_-4 + (execution_result_));
+        UpdateProgramCounter(-program_counter_ + (execution_result_));
       } 
       //=============================
       else if (id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
-        UpdateProgramCounter(id_ex.imm-8);
+        UpdateProgramCounter(-program_counter_+id_ex.pc+id_ex.imm);
       }
     } else if (id_ex.opcode==get_instr_encoding(Instruction::kbeq).opcode ||
                id_ex.opcode==get_instr_encoding(Instruction::kbne).opcode ||
@@ -204,8 +473,8 @@ void Forward::Execute() {
 
   // imm - 8 will give correct branch 1st instruction 
   if (id_ex.branch_flag && id_ex.opcode==0b1100011) {
-    //UpdateProgramCounter(-4);
     UpdateProgramCounter(id_ex.imm-8);
+    //UpdateProgramCounter(-program_counter_+id_ex.pc + id_ex.imm);
   }
 
 
@@ -213,18 +482,29 @@ void Forward::Execute() {
     execution_result_ = static_cast<int64_t>(program_counter_) - 12 + (id_ex.imm << 12);
 
   }
-    ex_mem.alu_result = execution_result_;
+  if(id_ex.branch){
+    if (id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode || 
+        id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode) {
+          ex_mem.alu_result = return_address_;
+        }
+        else ex_mem.alu_result=execution_result_;
+  }
+  else  ex_mem.alu_result=execution_result_;
     ex_mem.reg2_val =id_ex.reg2_val;
     ex_mem.rd = id_ex.rd;
     ex_mem.regWrite = id_ex.regWrite, ex_mem.memRead = id_ex.memRead, ex_mem.memWrite = id_ex.memWrite;
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
 }
 else
 ex_mem.valid=false;
+
+//std::cout<<"after float "<<(unsigned int)id_ex.rs2_type<<"\n";
 }
+
 void Forward::ExecuteFloat() {
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
@@ -236,25 +516,26 @@ void Forward::ExecuteFloat() {
 
   uint8_t fcsr_status = 0;
 
-  int32_t imm = ImmGenerator(current_instruction_);
+  //int32_t imm = ImmGenerator(current_instruction_);
 
   if (rm==0b111) {
     rm = registers_.ReadCsr(0x002);
   }
-
-  uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
-  uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+  //changed
+  uint64_t reg1_value = id_ex.reg1_val;
+  uint64_t reg2_value = id_ex.reg2_val;
   uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
 
   if (id_ex.funct7==0b1101000 || id_ex.funct7==0b1111000 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
-    reg1_value = registers_.ReadGpr(id_ex.rs1);
+    reg1_value = id_ex.reg1_val;
+  }
+  //doubt
+  if (id_ex.aluSrc) {
+    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
-  if (control_unit_.GetAluSrc()) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
-  }
-
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
+  //std::cout<<"aluop : "<<aluOperation<<" reg1_val: "<<reg1_value<<" reg2_val: "<<reg2_value<<" reg3_val: "<<reg3_value<<"\n";
   std::tie(execution_result_, fcsr_status) = alu::Alu::fpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 
   // std::cout << "+++++ Float execution result: " << execution_result_ << std::endl;
@@ -276,19 +557,19 @@ void Forward::ExecuteDouble() {
 
   //int32_t imm = ImmGenerator(current_instruction_);
 
-  uint64_t reg1_value = registers_.ReadFpr(id_ex.rs1);
-  uint64_t reg2_value = registers_.ReadFpr(id_ex.rs2);
+  uint64_t reg1_value = id_ex.reg1_val;
+  uint64_t reg2_value = id_ex.reg2_val;
   uint64_t reg3_value = registers_.ReadFpr(id_ex.rs3);
 
   if (id_ex.funct7==0b1101001 || id_ex.funct7==0b1111001 || id_ex.opcode==0b0000111 || id_ex.opcode==0b0100111) {
-    reg1_value = registers_.ReadGpr(id_ex.rs1);
+    reg1_value = id_ex.reg1_val;
   }
-
-  if (control_unit_.GetAluSrc()) {
+  // donno
+  if (id_ex.aluSrc) {
     reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
-  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(control_unit_.GetAluOp());
+  alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
   std::tie(execution_result_, fcsr_status) = alu::Alu::dfpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 }
 
@@ -487,11 +768,12 @@ void Forward::WriteMemory() {
     mem_wb.execute_type=ex_mem.execute_type;
   if (ex_mem.opcode == 0b1110011 && ex_mem.funct3 == 0b000) {
     mem_wb.opcode=ex_mem.opcode,mem_wb.funct3=ex_mem.funct3,mem_wb.funct7=ex_mem.funct7;
-    mem_wb.mem_data = 0x00000000;
+    mem_wb.mem_data = memory_result_;
     mem_wb.alu_result = ex_mem.alu_result;
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -504,6 +786,7 @@ void Forward::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   } else if (ex_mem.execute_type==2) {
@@ -514,6 +797,7 @@ void Forward::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -616,17 +900,21 @@ void Forward::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
 }
+// bsdi bug here 
 else
-ex_mem.valid=false;
+  mem_wb.valid=false;
 }
 
 void Forward::WriteMemoryFloat() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
-  if (control_unit_.GetMemRead()) { // FLW
+  if (ex_mem.memRead) { // FLW
+    //std::cout<<"memory to read from "<<ex_mem.alu_result;
     memory_result_ = memory_controller_.ReadWord(ex_mem.alu_result);
+    //std::cout<<"memory result "<<memory_result_<<"\n";
   }
 
   // std::cout << "+++++ Memory result: " << memory_result_ << std::endl;
@@ -635,12 +923,14 @@ void Forward::WriteMemoryFloat() {
   std::vector<uint8_t> old_bytes_vec;
   std::vector<uint8_t> new_bytes_vec;
 
-  if (control_unit_.GetMemWrite()) { // FSW
+  if (ex_mem.memWrite) { // FSW
     addr = ex_mem.alu_result;
     for (size_t i = 0; i < 4; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
     }
+    //std::cout<<"befoe masala "<<id_ex.reg2_val<<'\n';
     uint32_t val = ex_mem.reg2_val & 0xFFFFFFFF;
+    //std::cout<<"write back val"<<val<<"\n"; 
     memory_controller_.WriteWord(ex_mem.alu_result, val);
     // new_bytes_vec.push_back(memory_controller_.ReadByte(addr));
     for (size_t i = 0; i < 4; ++i) {
@@ -651,12 +941,13 @@ void Forward::WriteMemoryFloat() {
   if (old_bytes_vec!=new_bytes_vec) {
     current_delta_.memory_changes.push_back({addr, old_bytes_vec, new_bytes_vec});
   }
+  mem_wb.mem_data=memory_result_;
 }
 
 void Forward::WriteMemoryDouble() {
   //uint8_t rs2 = (current_instruction_ >> 20) & 0b11111;
 
-  if (control_unit_.GetMemRead()) {// FLD
+  if (ex_mem.memRead) {// FLD
     memory_result_ = memory_controller_.ReadDoubleWord(ex_mem.alu_result);
   }
 
@@ -664,7 +955,7 @@ void Forward::WriteMemoryDouble() {
   std::vector<uint8_t> old_bytes_vec;
   std::vector<uint8_t> new_bytes_vec;
 
-  if (control_unit_.GetMemWrite()) {// FSD
+  if (ex_mem.memWrite) {// FSD
     addr = ex_mem.alu_result;
     for (size_t i = 0; i < 8; ++i) {
       old_bytes_vec.push_back(memory_controller_.ReadByte(addr + i));
@@ -678,6 +969,7 @@ void Forward::WriteMemoryDouble() {
   if (old_bytes_vec!=new_bytes_vec) {
     current_delta_.memory_changes.push_back({addr, old_bytes_vec, new_bytes_vec});
   }
+  mem_wb.mem_data=memory_result_;
 }
 
 void Forward::WriteBack() {
@@ -686,6 +978,9 @@ void Forward::WriteBack() {
   // else std::cout<<"write back is invaldi\n";
   if(mem_wb.valid==true)
   {
+    if(mem_wb.rd==0 && mem_wb.rd_type!=0 ){
+      std::cout<<"hello world\n";
+    }
   // uint8_t opcode = current_instruction_ & 0b1111111;
   // uint8_t funct3 = (current_instruction_ >> 12) & 0b111;
   // uint8_t rd = (current_instruction_ >> 7) & 0b11111;
@@ -696,7 +991,8 @@ void Forward::WriteBack() {
     return;
   }
 
-  if (mem_wb.execute_type==1) { // RV64 F
+  if (mem_wb.execute_type==1) { 
+    //std::cout<<"memory result in writeback"<<mem_wb.mem_data<<"\n";// RV64 F
     WriteBackFloat();
     return;
   } else if (mem_wb.execute_type==2) {
@@ -726,10 +1022,12 @@ void Forward::WriteBack() {
       }
       case get_instr_encoding(Instruction::kjalr).opcode: /* JALR */
       case get_instr_encoding(Instruction::kjal).opcode: /* JAL */ {
-        registers_.WriteGpr(mem_wb.rd, next_pc_);
+        registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
         break;
       }
       case get_instr_encoding(Instruction::klui).opcode: /* LUI */ {
+        //std::cout<<"lui in writeback "<<mem_wb.alu_result<<"\n";
+        //std::cout<<" lui in wirte rd "<<+mem_wb.rd<<"\n";
         registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
         break;
       }
@@ -750,8 +1048,6 @@ void Forward::WriteBack() {
     current_delta_.register_changes.push_back({reg_index, reg_type, old_reg, new_reg});
   }
   }
-  // changed
-  else mem_wb.valid=false;
 }
 
 void Forward::WriteBackFloat() {
@@ -783,6 +1079,7 @@ void Forward::WriteBackFloat() {
         switch (mem_wb.opcode) {
           case get_instr_encoding(Instruction::kflw).opcode: {
             old_reg = registers_.ReadFpr(mem_wb.rd);
+            std::cout<<"to wtrite "<<mem_wb.mem_data<<" \n";
             registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
             new_reg = mem_wb.mem_data;
             reg_type = 2; // FPR
@@ -800,28 +1097,29 @@ void Forward::WriteBackFloat() {
       }
     }
 
-    // // write to GPR
-    // if (funct7==0b1010000
-    //     || funct7==0b1100000
-    //     || funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
-    //   old_reg = registers_.ReadGpr(rd);
-    //   registers_.WriteGpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 0; // GPR
+    if (mem_wb.funct7==0b1010000
+        || mem_wb.funct7==0b1100000
+        || mem_wb.funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
+      old_reg = registers_.ReadGpr(mem_wb.rd);
+      registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 0; // GPR
 
-    // }
-    // // write to FPR
-    // else if (opcode==get_instr_encoding(Instruction::kflw).opcode) {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, memory_result_);
-    //   new_reg = memory_result_;
-    //   reg_type = 2; // FPR
-    // } else {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 2; // FPR
-    // }
+    }
+    // write to FPR
+    else if (mem_wb.opcode==get_instr_encoding(Instruction::kflw).opcode) {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      std::cout<<"to wtrite if else"<<mem_wb.mem_data<<" \n";
+      registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
+      new_reg = mem_wb.mem_data;
+      reg_type = 2; // FPR
+    } else {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      //if(mem_wb.rd_type==1)
+      registers_.WriteFpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 2; // FPR
+    }
   }
 
   if (old_reg!=new_reg) {
@@ -921,122 +1219,106 @@ void Forward::Run() {
   ClearStop();
   uint64_t instruction_executed = 0;
   int count=1;
-  int nop_count=0;
-  while (!stop_requested_ && (program_counter_  < program_size_ + 16)) {
+  bool prev_stall=false;
+  while (!stop_requested_  && count<500 &&(program_counter_  < program_size_ + 16)) {
     //if (instruction_executed > vm_config::config.getInstructionExecutionLimit())
     //break
-    //std::cout<<"count "<<count<<"\n\n";
-    if(mem_wb.valid==true)
-    instruction_executed++;
 
     bool stall=false;
     bool branch_stall=false;
-    
+
+    //std::cout<<"count "<<count<<"\n\n";
+    //
+    std::cout<<"Current PC "<<program_counter_<<"\n";
+    if(mem_wb.valid==true)
+    instruction_executed++;
+    if(prev_stall) id_ex.valid=false;
+
     WriteBack();
     WriteMemory();
     Execute();
-    if(id_ex.branch){
-      if(id_ex.opcode==get_instr_encoding(Instruction::kjalr).opcode ||
-          id_ex.opcode==get_instr_encoding(Instruction::kjal).opcode || 
-          id_ex.branch_flag){
-          branch_stall=true;
-      }
-    }
+    Control_Hazard();
 
-    if(id_ex.valid && branch_stall){
-      if_id.valid=false;
-    }
     Decode();
 
-    // when prev is add/sub/anything exe forwarding
+    Forward_data();
 
-    if(mem_wb.valid){
-        // prev to prev load no nop 
-        if(mem_wb.memToReg){
-            if(mem_wb.rd>0 && mem_wb.rd<32 ){
-                if(mem_wb.rd==id_ex.rs1){
-                    id_ex.reg1_val=mem_wb.mem_data;
-                }
-                if(id_ex.rs2<32 && id_ex.rs2==mem_wb.rd){
-                    id_ex.reg2_val=mem_wb.mem_data;
-                }
-            }
-        }
-        // prev to prev alu pass
-        /* ===========================================
-        regwrite is on for load so earlier it was if statement overwriting the data 
-        ============================================ */
-        else if(mem_wb.regWrite){
-            //std::cout<<""
-            if(mem_wb.rd>0 && mem_wb.rd<32 ){
-                if(mem_wb.rd==id_ex.rs1){
-                    id_ex.reg1_val=mem_wb.alu_result;
-                }
-                if(id_ex.rs2<32 && id_ex.rs2==mem_wb.rd){
-                    id_ex.reg2_val=mem_wb.alu_result;
-                }
-            }
-
-        }
-        
-    } 
-    if(ex_mem.valid){
-        // prev instruction is load
-        if(ex_mem.memRead){
-            if(ex_mem.rd>0 && ex_mem.rd<32 ){
-                if(ex_mem.rd==id_ex.rs1){
-                    stall=true;
-                }
-                if(id_ex.rs2<32 && id_ex.rs2==ex_mem.rd){
-                    stall=true;
-                }
-            }
-
-            
-        }
-        // prev is alu pass
-        else if(ex_mem.regWrite){
-            std::cout<<"ex_mem rd "<<+ex_mem.rd<<" id_ex rs1 "<<+id_ex.rs1<<" id_ex rs2 "<<+id_ex.rs2<<"\n";
-            if(ex_mem.rd>0 && ex_mem.rd<32 ){
-                if(ex_mem.rd==id_ex.rs1){
-                    //std::cout<<"val of rs1"<<id_ex.rs1<<" forwarded used \n";
-                    id_ex.reg1_val=ex_mem.alu_result;
-                }
-                if(id_ex.rs2<32 && id_ex.rs2==ex_mem.rd){
-                  //  std::cout<<"val of rs2"<<id_ex.rs2<<" forwarded used \n";
-                    id_ex.reg2_val=ex_mem.alu_result;
-                }
-            } 
-        }
-    }
-
-
-    if(stall){
-        UpdateProgramCounter(-4);
-        id_ex.valid=false;
-        nop_count++;
-    }
-    //if(program_counter_<program_size_)
     Fetch();
+
+
+
+
+
+    //if(stall) std::cout<<"HALOOOOOOOOOOOOOOOOOO\n";
 
     //else
     //if_id.valid=false;
-    instructions_retired_++;
-    
-    //std::cout<<"opcode "<<+id_ex.opcode<<" imm "<<id_ex.imm<<"\n\n";
+    // --- Cycle End ---
+    std::cout << "\n================= CYCLE " << std::dec << cycle_s_ << " END =================\n";
+    std::cout << "Current PC: 0x" << std::hex << program_counter_ << std::dec << "\n";
 
+    // --- IF/ID Register State ---
+    // (Note: rs1, rs2, rd, imm are not yet known in this stage)
+    std::cout << "IF/ID: "
+              << "valid: " << if_id.valid
+              << " | PC: 0x" << std::hex << if_id.pc
+              << " | Instr: 0x" << if_id.instruction << std::dec
+              << "\n";
+
+    // --- ID/EX Register State ---
+    std::cout << "ID/EX: "
+              << "valid: " << id_ex.valid
+              << " | rs1: " << (unsigned int)id_ex.rs1  // Cast to int to print number, not char
+              << " | rs1_type: "<< (unsigned int)id_ex.rs1_type
+              << " | rs2: " << (unsigned int)id_ex.rs2
+              << " | rs2_type: "<< (unsigned int)id_ex.rs2_type
+              << " | rd: " << (unsigned int)id_ex.rd
+              << " | rd_type: "<< (unsigned int)id_ex.rd_type
+              << " | opcode: "<<(unsigned int)id_ex.opcode
+              << " | funct7: "<<(unsigned int)id_ex.funct7
+              << " | imm: 0x" << std::hex << id_ex.imm << std::dec
+              << "\n";
+
+    // --- EX/MEM Register State ---
+    // (Note: rs1, rs2, imm are used and gone; rd is passed through)
+    std::cout << "EX/MEM: "
+              << "valid: " << ex_mem.valid
+              << " | rd: " << (unsigned int)ex_mem.rd
+              << " | rd_type: "<< (unsigned int)ex_mem.rd_type
+              << " | ALU_Result: 0x" << std::hex << ex_mem.alu_result << std::dec
+              << " | regWrite: " << ex_mem.regWrite
+              << " | memRead: " << ex_mem.memRead
+              << "\n";
+
+    // --- MEM/WB Register State ---
+    // (Note: rd is passed through for the final write)
+    uint64_t write_data = mem_wb.memToReg ? mem_wb.mem_data : mem_wb.alu_result;
+    std::cout << "MEM/WB: "
+              << "valid: " << mem_wb.valid
+              << " | rd: " << (unsigned int)mem_wb.rd
+              << " | rd_type: "<< (unsigned int)mem_wb.rd_type
+              << " | WriteData: 0x" << std::hex << write_data << std::dec
+              << " | regWrite: " << mem_wb.regWrite
+              << "\n";
+    std::cout << "====================================================\n\n";
+
+
+    // This line should already be in your code:
     cycle_s_++;
-    std::cout << "Program Counter: " << program_counter_ << std::endl;
-    std::cout<<"\n\n";
+
+    instructions_retired_++;
+    count++;
+    //std::cout<<"rd "<<+id_ex.rd<<" imm "<<id_ex.imm<<"\n\n";
+    //std::cout << "Program Counter: " << program_counter_ << std::endl;
   }
   if (program_counter_ >= program_size_) {
     std::cout << "VM_PROGRAM_END" << std::endl;
     output_status_ = "VM_PROGRAM_END";
   }
-  std::cout<<"Nop count "<<nop_count<<"\n";
   DumpRegisters(globals::registers_dump_file_path, registers_);
   DumpState(globals::vm_state_dump_file_path);
 }
+
 void Forward::DebugRun() {
   ClearStop();
   uint64_t instruction_executed = 0;

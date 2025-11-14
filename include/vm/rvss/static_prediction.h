@@ -61,6 +61,8 @@ class Prediction : public VmBase {
   uint8_t csr_uimm_{};
 
   // --- Pipeline Stage Functions ---
+  void Forward_Data();
+  void Branch_Control();
   void Fetch();
   void Decode();
   void Execute();

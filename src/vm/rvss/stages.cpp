@@ -68,6 +68,7 @@ void Stages::Decode() {
           id_ex.rs1=32; 
           id_ex.rs2=32; 
     }
+    /// rs2 change rs2 not in instr
   else
   {
     id_ex.reg1_val = registers_.ReadGpr(id_ex.rs1);
@@ -108,6 +109,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==2) {
@@ -119,6 +121,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   } else if (id_ex.execute_type==3) {
@@ -130,6 +133,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
     return;
   }
@@ -219,6 +223,7 @@ void Stages::Execute() {
     ex_mem.funct3 = id_ex.funct3;
     ex_mem.funct7 = id_ex.funct7;
     ex_mem.opcode=id_ex.opcode;
+    ex_mem.rd_type=id_ex.rd_type;
     ex_mem.valid=true;
 }
 else
@@ -235,7 +240,7 @@ void Stages::ExecuteFloat() {
 
   uint8_t fcsr_status = 0;
 
-  int32_t imm = ImmGenerator(current_instruction_);
+  //int32_t imm = ImmGenerator(current_instruction_);
 
   if (rm==0b111) {
     rm = registers_.ReadCsr(0x002);
@@ -250,11 +255,11 @@ void Stages::ExecuteFloat() {
   }
 
   if (id_ex.aluSrc) {
-    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(imm));
+    reg2_value = static_cast<uint64_t>(static_cast<int64_t>(id_ex.imm));
   }
 
   alu::AluOp aluOperation = control_unit_.GetAluSignal_pipelined(id_ex.aluOp);
-  std::cout<<aluOperation<<std::endl;
+  //std::cout<<aluOperation<<std::endl;
   std::tie(execution_result_, fcsr_status) = alu::Alu::fpexecute(aluOperation, reg1_value, reg2_value, reg3_value, rm);
 
   // std::cout << "+++++ Float execution result: " << execution_result_ << std::endl;
@@ -492,6 +497,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -504,6 +510,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   } else if (ex_mem.execute_type==2) {
@@ -514,6 +521,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
     return;
   }
@@ -616,6 +624,7 @@ void Stages::WriteMemory() {
     mem_wb.rd = ex_mem.rd,
     mem_wb.regWrite = ex_mem.regWrite;
     mem_wb.memToReg = ex_mem.memRead;
+    mem_wb.rd_type=ex_mem.rd_type;
     mem_wb.valid=true;
 }
 else
@@ -798,28 +807,28 @@ void Stages::WriteBackFloat() {
       }
     }
 
-    // // write to GPR
-    // if (funct7==0b1010000
-    //     || funct7==0b1100000
-    //     || funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
-    //   old_reg = registers_.ReadGpr(rd);
-    //   registers_.WriteGpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 0; // GPR
+    // write to GPR
+    if (mem_wb.funct7==0b1010000
+        || mem_wb.funct7==0b1100000
+        || mem_wb.funct7==0b1110000) { // f(eq|lt|le).s, fcvt.(w|wu|l|lu).s
+      old_reg = registers_.ReadGpr(mem_wb.rd);
+      registers_.WriteGpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 0; // GPR
 
-    // }
-    // // write to FPR
-    // else if (opcode==get_instr_encoding(Instruction::kflw).opcode) {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, memory_result_);
-    //   new_reg = memory_result_;
-    //   reg_type = 2; // FPR
-    // } else {
-    //   old_reg = registers_.ReadFpr(rd);
-    //   registers_.WriteFpr(rd, execution_result_);
-    //   new_reg = execution_result_;
-    //   reg_type = 2; // FPR
-    // }
+    }
+    // write to FPR
+    else if (mem_wb.opcode==get_instr_encoding(Instruction::kflw).opcode) {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.mem_data);
+      new_reg = mem_wb.mem_data;
+      reg_type = 2; // FPR
+    } else {
+      old_reg = registers_.ReadFpr(mem_wb.rd);
+      registers_.WriteFpr(mem_wb.rd, mem_wb.alu_result);
+      new_reg = mem_wb.alu_result;
+      reg_type = 2; // FPR
+    }
   }
 
   if (old_reg!=new_reg) {

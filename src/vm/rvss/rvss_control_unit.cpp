@@ -137,118 +137,128 @@ void RVSSControlUnit::Decoding_the_instruction(uint32_t instruction) {
     id_ex.aluOp = false,id_ex.aluSrc = false;
     id_ex.rs1_type=0,id_ex.rs2_type=0,id_ex.rs3_type=0,id_ex.rd_type=0;
 
-  switch (id_ex.opcode) {
-    case 0b0110011: /* R-type (kAdd, kSub, kAnd, kOr, kXor, kSll, kSrl, etc.) */ {
-      id_ex.regWrite = true;
-      id_ex.aluOp = true;
-      break;
-    }
-    case 0b0000011: 
-    
-    
-    {// Load instructions (LB, LH, LW, LD)
-      id_ex.aluSrc = true;
-      id_ex.memRead = true;
-      id_ex.regWrite = true;
-      break;
-    }
-    case 0b0100011: {// Store instructions (SB, SH, SW, SD)
-      id_ex.aluSrc = true;
-      id_ex.aluOp = true;
-      id_ex.memWrite = true;
-      break;
-    }
-    case 0b1100011: {// branch_ instructions (BEQ, BNE, BLT, BGE)
-      id_ex.aluOp = true;
-      id_ex.branch = true;
-      break;
-    }
-    case 0b0010011: {// I-type alu instructions (ADDI, ANDI, ORI, XORI, SLTI, SLLI, SRLI)
-      id_ex.aluSrc = true;
-      id_ex.regWrite = true;
-      id_ex.aluOp = true;
-      break;
-    }
-    case 0b0110111: {// LUI (Load Upper Immediate)
-      id_ex.aluSrc = true;
-      id_ex.regWrite = true;
-      id_ex.aluOp = true; // alu will add immediate to zero
-      break;
-    }
-    case 0b0010111: {// AUIPC (Add Upper Immediate to PC)
-      id_ex.aluSrc = true;
-      id_ex.regWrite = true;
-      id_ex.aluOp = true; // alu will add immediate to PC
-      break;
-    }
-    case 0b1101111: {// JAL (Jump and Link)
-      id_ex.regWrite = true;
-      id_ex.branch = true;
-      break;
-    }
-    case 0b1100111: {// JALR (Jump and Link Register)
-      id_ex.aluSrc = true;
-      id_ex.regWrite = true;
-      id_ex.branch = true;
-      break;
-    }
-    case 0b0000001: {// kMul
-      id_ex.regWrite = true;
-      id_ex.aluOp = true;
-      break;
-    }
-
-
-        // F extension + D extension
-    case 0b0000111: {// F-Type Load instructions (FLW, FLD)
-      id_ex.aluSrc = true;
-     // id_ex.mem_to_reg_ = true;
-      id_ex.regWrite = true;
-      id_ex.memRead = true;
-      id_ex.rd_type=1;
-      break;
-    }
-    case 0b0100111: {// F-Type Store instructions (FSW, FSD)
-      id_ex.aluSrc = true;
-      id_ex.aluOp = true;
-      id_ex.memWrite = true;
-      id_ex.rs2_type=1;
-      break;
-    }
-    case 0b1010011: {// F-Type R-type instructions (FADD, FSUB, FMUL, FDIV, etc.)
-      id_ex.regWrite = true;
-      id_ex.aluOp = true;
-      id_ex.rd_type=1;
-      id_ex.rs1_type=1;
-      id_ex.rs2_type=1;
-
-        if (id_ex.funct7 == 0b1100000 || id_ex.funct7 == 0b1101000 ||
-        id_ex.funct7 == 0b1110001 || id_ex.funct7 == 0b1111001) {
-        
-        // Conversion direction:
-        if (id_ex.funct7 == 0b1100000 || id_ex.funct7 == 0b1110001) {
-            // float → int
-            id_ex.rd_type = 0;    // destination is integer register
-            id_ex.rs1_type = 1;   // source is FP register
-        } else {
-            // int → float
-            id_ex.rd_type = 1;    // destination is FP register
-            id_ex.rs1_type = 0;   // source is integer register
+    switch (id_ex.opcode) {
+        case 0b0110011: /* R-type (kAdd, kSub, kAnd, kOr, kXor, kSll, kSrl, etc.) */ {
+        id_ex.regWrite = true;
+        id_ex.aluOp = true;
+        break;
         }
-    }
-      break;
-    }
-    
+        case 0b0000011: 
+        
+        
+        {// Load instructions (LB, LH, LW, LD)
+        id_ex.aluSrc = true;
+        id_ex.memRead = true;
+        id_ex.regWrite = true;
+        break;
+        }
+        case 0b0100011: {// Store instructions (SB, SH, SW, SD)
+        id_ex.aluSrc = true;
+        id_ex.aluOp = true;
+        id_ex.memWrite = true;
+        break;
+        }
+        case 0b1100011: {// branch_ instructions (BEQ, BNE, BLT, BGE)
+        id_ex.aluOp = true;
+        id_ex.branch = true;
+        break;
+        }
+        case 0b0010011: {// I-type alu instructions (ADDI, ANDI, ORI, XORI, SLTI, SLLI, SRLI)
+        id_ex.aluSrc = true;
+        id_ex.regWrite = true;
+        id_ex.aluOp = true;
+        break;
+        }
+        case 0b0110111: {// LUI (Load Upper Immediate)
+        id_ex.aluSrc = true;
+        id_ex.regWrite = true;
+        id_ex.aluOp = true; // alu will add immediate to zero
+        break;
+        }
+        case 0b0010111: {// AUIPC (Add Upper Immediate to PC)
+        id_ex.aluSrc = true;
+        id_ex.regWrite = true;
+        id_ex.aluOp = true; // alu will add immediate to PC
+        break;
+        }
+        case 0b1101111: {// JAL (Jump and Link)
+        id_ex.regWrite = true;
+        id_ex.branch = true;
+        break;
+        }
+        case 0b1100111: {// JALR (Jump and Link Register)
+        id_ex.aluSrc = true;
+        id_ex.regWrite = true;
+        id_ex.branch = true;
+        break;
+        }
+        case 0b0000001: {// kMul
+        id_ex.regWrite = true;
+        id_ex.aluOp = true;
+        break;
+        }
+            // F extension + D extension
+        case 0b0000111: { // FLW, FLD (Floating-point loads)
+            id_ex.aluSrc = true;
+            id_ex.regWrite = true;
+            id_ex.memRead = true;
+            id_ex.rd_type = 1; // FP destination
+            break;
+        }
 
+        case 0b0100111: { // FSW, FSD (Floating-point stores)
+            id_ex.aluSrc = true;
+            id_ex.aluOp = true;
+            id_ex.memWrite = true;
+            if (id_ex.funct3 == 0b010) { // FLW
+                id_ex.rs2_type = 1; // Float
+            } else if (id_ex.funct3 == 0b011) { // FLD
+                id_ex.rs2_type = 2; // Double
+            }
+            std::cout<<"rs2 type"<<(unsigned int)id_ex.rs2_type<<"\n";
+            break;
+        }
 
+        case 0b1010011: { // FP arithmetic / move / convert (FADD, FSUB, FMV, FCVT, etc.)
+            id_ex.regWrite = true;
+            id_ex.aluOp = true;
+            id_ex.rd_type = 1;
+            id_ex.rs1_type = 1;
+            id_ex.rs2_type = 1;
 
+            switch (id_ex.funct7) {
+                // Float → Int conversions / moves
+                case 0b1100000: // FCVT.W.S
+                case 0b1110001: // FCVT.L.D
+                case 0b1110000: // FMV.X.W
+                    id_ex.rd_type = 0;    // integer dest
+                    id_ex.rs1_type = 1;   // FP source
+                    //id_ex.rs2_type = 0;
+                    break;
 
-    default:
-      break;
-  }
+                // Int → Float conversions / moves
+                case 0b1101000: // FCVT.S.W
+                case 0b1111001: // FCVT.D.L
+                case 0b1111000: // FMV.W.X
+                    id_ex.rd_type = 1;    // FP dest
+                    id_ex.rs1_type = 0;   // integer source
+                    //id_ex.rs2_type = 0;
+                    break;
 
-    
+                // Regular FP arithmetic (FADD, FSUB, FMUL, etc.)
+                default:
+                    id_ex.rd_type = 1;
+                    id_ex.rs1_type = 1;
+                    id_ex.rs2_type = 1;
+                    break;
+            }
+            break;
+        }
+    }   
 }
+
+    
+
 alu::AluOp RVSSControlUnit::GetAluSignal_pipelined(bool ALUOp) {
     (void)ALUOp; // Suppress unused variable warning
     // DONT UNCOMMENT THIS WITHOUT SUPPORTING ALUOP IN CONTROL SIGNAL SETTING

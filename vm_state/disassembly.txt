@@ -1,34 +1,62 @@
 0000000000000000 <start>:
-   0: 00500093             addi x1, x0, 5
-   4: 00600113             addi x2, x0, 6
-   8: 001002b3             add x5, x0, x1
-   c: 00200333             add x6, x0, x2
+   0: 00100a13             addi x20, x0, 1
+   4: 00200a93             addi x21, x0, 2
+   8: 00300b13             addi x22, x0, 3
+   c: 00400b93             addi x23, x0, 4
+  10: d00af353             fcvt.s.w f6, x21 rm=7
+  14: 186372d3             fdiv.s f5, f6, f6 rm=7
+  18: 0852f3d3             fsub.s f7, f5, f5 rm=7
+  1c: 100001b7             lui x3, 65536
+  20: 20018c13             addi x24, x3, 512
+  24: 00100293             addi x5, x0, 1
+  28: d002f153             fcvt.s.w f2, x5 rm=7
+  2c: 18617153             fdiv.s f2, f2, f6 rm=7
+  30: 18617153             fdiv.s f2, f2, f6 rm=7
+  34: 00500213             addi x4, x0, 5
+  38: 00000263             beq x0, x0, 4 <EXP>
 
-0000000000000010 <gcd>:
-  10: 00028e63             beq x5, x0, 28 <assign>
-  14: 00030c63             beq x6, x0, 24 <assign>
-  18: 0062c663             blt x5, x6, 12 <op_2>
-  1c: 406282b3             sub x5, x5, x6
-  20: 00000463             beq x0, x0, 8 <next>
+000000000000003c <EXP>:
+  3c: fff20213             addi x4, x4, -1
 
-0000000000000024 <op_2>:
-  24: 40530333             sub x6, x6, x5
+0000000000000040 <LOOP_EXP>:
+  40: 02024463             blt x4, x0, 40 <EXIT>
+  44: 00400533             add x10, x0, x4
+  48: 024000ef             jal x1, 36 <POWER>
+  4c: 00400533             add x10, x0, x4
+  50: 044000ef             jal x1, 68 <FACT>
+  54: d00470d3             fcvt.s.w f1, x8 rm=7
+  58: 181071d3             fdiv.s f3, f0, f1 rm=7
+  5c: 00327253             fadd.s f4, f4, f3 rm=7
+  60: fff20213             addi x4, x4, -1
+  64: fc000ee3             beq x0, x0, -36 <LOOP_EXP>
 
-0000000000000028 <next>:
-  28: fe0004e3             beq x0, x0, -24 <gcd>
+0000000000000068 <EXIT>:
+  68: 00000063             beq x0, x0, 0 <EXIT>
 
-000000000000002c <assign>:
-  2c: 00000393             addi x7, x0, 0
-  30: 00028663             beq x5, x0, 12 <next2>
-  34: 005003b3             add x7, x0, x5
-  38: 00000463             beq x0, x0, 8 <lcm>
+000000000000006c <POWER>:
+  6c: 00100f93             addi x31, x0, 1
+  70: d00ff053             fcvt.s.w f0, x31 rm=7
+  74: 00000013             addi x0, x0, 0
+  78: 00000013             addi x0, x0, 0
+  7c: 00000013             addi x0, x0, 0
 
-000000000000003c <next2>:
-  3c: 006003b3             add x7, x0, x6
+0000000000000080 <LOOP_POWER>:
+  80: 00a05863             bge x0, x10, 16 <END1>
+  84: 10207053             fmul.s f0, f0, f2 rm=7
+  88: fff50513             addi x10, x10, -1
+  8c: fe000ae3             beq x0, x0, -12 <LOOP_POWER>
 
-0000000000000040 <lcm>:
-  40: 02208433             mul x8, x1, x2
-  44: 02744433             div x8, x8, x7
+0000000000000090 <END1>:
+  90: 00008067             jalr x0, x1, 0
 
-0000000000000048 <exit>:
-  48: 00000063             beq x0, x0, 0 <exit>
+0000000000000094 <FACT>:
+  94: 00100413             addi x8, x0, 1
+
+0000000000000098 <LOOP_FACT>:
+  98: 00a05863             bge x0, x10, 16 <END2>
+  9c: 02a40433             mul x8, x8, x10
+  a0: fff50513             addi x10, x10, -1
+  a4: fe000ae3             beq x0, x0, -12 <LOOP_FACT>
+
+00000000000000a8 <END2>:
+  a8: 00008067             jalr x0, x1, 0

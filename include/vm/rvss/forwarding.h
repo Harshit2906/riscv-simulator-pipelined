@@ -61,6 +61,8 @@ class Forward : public VmBase {
   uint8_t csr_uimm_{};
 
   // --- Pipeline Stage Functions ---
+  void Forward_data();
+  void Control_Hazard();
   void Fetch();
   void Decode();
   void Execute();
